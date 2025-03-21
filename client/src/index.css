@@ -368,21 +368,99 @@
     box-shadow: 0 0 15px rgba(37, 99, 235, 0.3);
   }
   
+  /* Language-specific styles */
+  html:lang(ar) {
+    font-family: 'Arial', sans-serif;
+  }
+  
+  html:lang(ru) {
+    font-family: 'Arial', sans-serif;
+  }
+  
+  html.lang-he,
+  html.lang-ar {
+    --main-font: 'Assistant', 'Arial', sans-serif;
+  }
+  
+  html.lang-en {
+    --main-font: 'Poppins', 'Arial', sans-serif;
+  }
+  
+  html.lang-ru {
+    --main-font: 'Arial', sans-serif;
+    letter-spacing: 0.02em;
+  }
+  
+  html.lang-ar {
+    letter-spacing: 0.01em;
+  }
+  
   /* Accessibility classes */
   .high-contrast {
     filter: contrast(1.5);
+  }
+  
+  .high-contrast body {
+    background: #000 !important;
+    color: #fff !important;
+  }
+  
+  .high-contrast a,
+  .high-contrast button {
+    color: #ffff00 !important;
+  }
+  
+  .high-contrast .bg-cosmic,
+  .high-contrast .bg-slate-800,
+  .high-contrast .bg-slate-900 {
+    background-color: #000 !important;
+  }
+  
+  .high-contrast .text-divine {
+    color: #fff !important;
+  }
+  
+  .high-contrast .text-primary,
+  .high-contrast .text-secondary,
+  .high-contrast .text-gold {
+    color: #ffff00 !important;
   }
   
   .dyslexic-font {
     font-family: 'Comic Sans MS', cursive, sans-serif;
     letter-spacing: 0.05em;
     word-spacing: 0.1em;
+    line-height: 1.6;
+  }
+  
+  .dyslexic-font p,
+  .dyslexic-font span,
+  .dyslexic-font h1,
+  .dyslexic-font h2,
+  .dyslexic-font h3,
+  .dyslexic-font h4,
+  .dyslexic-font h5,
+  .dyslexic-font h6,
+  .dyslexic-font a,
+  .dyslexic-font button,
+  .dyslexic-font input,
+  .dyslexic-font textarea,
+  .dyslexic-font label {
+    font-family: 'Comic Sans MS', cursive, sans-serif !important;
   }
   
   .highlight-links a {
     border-bottom: 2px solid #2563EB !important;
     text-decoration: none !important;
     font-weight: bold !important;
+    padding-bottom: 2px !important;
+    transition: all 0.2s ease !important;
+  }
+  
+  .highlight-links a:hover,
+  .highlight-links a:focus {
+    background-color: rgba(37, 99, 235, 0.1) !important;
+    border-bottom-width: 3px !important;
   }
   
   /* 3D button effect */
@@ -396,5 +474,21 @@
   .btn-3d:active {
     box-shadow: 0 2px 0 rgba(21, 128, 61, 0.8);
     transform: translateY(2px);
+  }
+  
+  /* Floating button animations */
+  @keyframes cosmic-pulse {
+    0%, 100% {
+      box-shadow: 0 0 8px rgba(37, 99, 235, 0.5), 0 0 15px rgba(37, 99, 235, 0.3);
+      transform: scale(1);
+    }
+    50% {
+      box-shadow: 0 0 15px rgba(37, 99, 235, 0.7), 0 0 25px rgba(37, 99, 235, 0.5);
+      transform: scale(1.05);
+    }
+  }
+  
+  .cosmic-pulse {
+    animation: cosmic-pulse 3s infinite ease-in-out;
   }
 }

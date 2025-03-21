@@ -27,18 +27,10 @@ const FloatingSocialButtons = () => {
       tooltip: t('social.phone'),
     },
     {
-      name: 'Chat',
-      icon: 'fas fa-comment-dots',
-      bgColor: 'bg-[#4A90E2]',
-      link: '#',
-      tooltip: t('social.chat'),
-      onClick: () => alert('פתיחת צ\'אט מהיר') // Placeholder for chat functionality
-    },
-    {
       name: 'Email',
       icon: 'fas fa-envelope',
       bgColor: 'bg-gold',
-      link: 'mailto:info@lehovalot.com',
+      link: 'mailto:info@or-lehovalot.co.il',
       tooltip: t('social.email'),
     },
     {
@@ -58,9 +50,22 @@ const FloatingSocialButtons = () => {
     {
       name: 'Accessibility',
       icon: 'fas fa-universal-access',
-      bgColor: 'bg-slate-800',
+      bgColor: 'bg-indigo-700',
       tooltip: t('accessibility.toggle'),
       onClick: () => setIsAccessibilityOpen(!isAccessibilityOpen)
+    },
+    {
+      name: 'Language',
+      icon: 'fas fa-language',
+      bgColor: 'bg-emerald-600',
+      tooltip: t('common.chooseLanguage'),
+      onClick: () => {
+        // Toggle between languages
+        const nextLanguage = language === 'he' ? 'en' : 
+                             language === 'en' ? 'ru' : 
+                             language === 'ru' ? 'ar' : 'he';
+        setLanguage(nextLanguage);
+      }
     },
   ];
   
