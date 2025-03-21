@@ -11,13 +11,15 @@
     "@react-three/fiber": "latest",
     "emailjs-com": "latest",
     "gsap": "latest",
-    "next": "^15.2.3",
+    "next": "latest",
     "react": "latest",
     "react-dom": "latest"
   },
   "devDependencies": {
+    "@types/node": "22.13.11",
     "autoprefixer": "latest",
     "postcss": "latest",
-    "tailwindcss": "latest"
+    "tailwindcss": "latest",
+    "typescript": "5.8.2"
   }
 }
