@@ -1,5 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Heebo:wght@100;200;300;400;500;600;700;800;900&family=Rubik:wght@300;400;500;600;700&family=Assistant:wght@200;300;400;500;600;700;800&display=swap');
-@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css');
+@import url('https://fonts.googleapis.com/css2?family=Heebo:wght@100;200;300;400;500;600;700;800;900&family=Rubik:wght@300;400;500;600;700&family=Assistant:wght@200;300;400;500;600;700;800&family=Poppins:wght@100;200;300;400;500;600;700;800;900&display=swap');
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css');
 
 @tailwind base;
 @tailwind components;
@@ -11,51 +11,109 @@
   }
 
   body {
-    @apply font-assistant antialiased bg-background text-foreground scroll-smooth;
+    @apply font-assistant antialiased bg-cosmic text-divine scroll-smooth;
+    background-image: 
+      radial-gradient(circle at 25% 10%, rgba(1, 65, 255, 0.05) 0%, transparent 60%),
+      radial-gradient(circle at 75% 30%, rgba(4, 219, 140, 0.05) 0%, transparent 30%),
+      radial-gradient(circle at 50% 80%, rgba(234, 179, 8, 0.05) 0%, transparent 50%);
   }
 
   html {
     scroll-behavior: smooth;
   }
+  
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: #050A1A;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: #2563EB;
+    border-radius: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: #3B82F6;
+  }
 }
 
 @layer components {
-  .bg-light {
-    @apply bg-gray-50;
+  /* Colors */
+  .text-cosmic {
+    color: #050A1A; /* Cosmic Black */
+  }
+  
+  .bg-cosmic {
+    background-color: #050A1A; /* Cosmic Black */
+  }
+  
+  .text-divine {
+    color: #F8FAFC; /* Divine White */
+  }
+  
+  .bg-divine {
+    background-color: #F8FAFC; /* Divine White */
   }
   
   .text-primary {
-    color: #E30613;
+    color: #2563EB; /* Blue */
   }
   
   .bg-primary {
-    background-color: #E30613;
+    background-color: #2563EB; /* Blue */
   }
   
   .border-primary {
-    border-color: #E30613;
+    border-color: #2563EB; /* Blue */
   }
 
   .text-secondary {
-    color: #1F3D99;
+    color: #15803D; /* Green */
   }
   
   .bg-secondary {
-    background-color: #1F3D99;
+    background-color: #15803D; /* Green */
   }
   
   .border-secondary {
-    border-color: #1F3D99;
-  }
-
-  .text-dark {
-    color: #222;
+    border-color: #15803D; /* Green */
   }
   
-  .bg-accent {
-    background-color: #FFD700;
+  .text-gold {
+    color: #EAB308; /* Gold */
   }
-
+  
+  .bg-gold {
+    background-color: #EAB308; /* Gold */
+  }
+  
+  .border-gold {
+    border-color: #EAB308; /* Gold */
+  }
+  
+  .bg-light {
+    @apply bg-slate-800/50;
+  }
+  
+  .bg-card {
+    background-color: rgba(15, 23, 42, 0.7);
+    backdrop-filter: blur(8px);
+  }
+  
+  .bg-glass {
+    background: rgba(15, 23, 42, 0.4);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+  
+  .text-dark {
+    color: #0F172A;
+  }
+  
+  /* Fonts */
   .font-heebo {
     font-family: 'Heebo', sans-serif;
   }
@@ -68,7 +126,11 @@
     font-family: 'Assistant', sans-serif;
   }
   
-  /* Testimonial card 3D effects */
+  .font-poppins {
+    font-family: 'Poppins', sans-serif;
+  }
+  
+  /* 3D Effects */
   .transform-style-preserve-3d {
     transform-style: preserve-3d;
   }
@@ -79,5 +141,127 @@
   
   .rotate-y-180 {
     transform: rotateY(180deg);
+  }
+  
+  /* Cosmic Effects */
+  .cosmic-glow {
+    box-shadow: 0 0 15px rgba(37, 99, 235, 0.5), 0 0 30px rgba(37, 99, 235, 0.3);
+  }
+  
+  .gold-glow {
+    box-shadow: 0 0 15px rgba(234, 179, 8, 0.5), 0 0 30px rgba(234, 179, 8, 0.3);
+  }
+  
+  .green-glow {
+    box-shadow: 0 0 15px rgba(21, 128, 61, 0.5), 0 0 30px rgba(21, 128, 61, 0.3);
+  }
+  
+  .white-glow {
+    box-shadow: 0 0 15px rgba(248, 250, 252, 0.5), 0 0 30px rgba(248, 250, 252, 0.3);
+  }
+  
+  /* Animations */
+  .animate-float {
+    animation: floating 6s ease-in-out infinite;
+  }
+  
+  .animate-float-slow {
+    animation: floating 8s ease-in-out infinite;
+  }
+  
+  .animate-float-fast {
+    animation: floating 4s ease-in-out infinite;
+  }
+  
+  .animate-pulse-glow {
+    animation: pulse-glow 3s ease-in-out infinite;
+  }
+  
+  @keyframes floating {
+    0% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-15px);
+    }
+    100% {
+      transform: translateY(0px);
+    }
+  }
+  
+  @keyframes pulse-glow {
+    0% {
+      box-shadow: 0 0 10px rgba(37, 99, 235, 0.5);
+    }
+    50% {
+      box-shadow: 0 0 20px rgba(37, 99, 235, 0.8), 0 0 30px rgba(37, 99, 235, 0.4);
+    }
+    100% {
+      box-shadow: 0 0 10px rgba(37, 99, 235, 0.5);
+    }
+  }
+  
+  /* Button Styles */
+  .btn-3d {
+    position: relative;
+    transform: translateZ(0);
+    transition: all 0.3s;
+  }
+  
+  .btn-3d:before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: inherit;
+    border-radius: inherit;
+    transform: translateZ(-5px);
+    filter: blur(8px);
+    opacity: 0.5;
+    transition: all 0.3s;
+  }
+  
+  .btn-3d:hover {
+    transform: translateY(-2px) translateZ(0);
+  }
+  
+  .btn-3d:hover:before {
+    transform: translateZ(-8px);
+    filter: blur(12px);
+  }
+  
+  .btn-3d:active {
+    transform: translateY(1px) translateZ(0);
+  }
+  
+  /* Service Card Hover */
+  .service-card {
+    transition: all 0.4s ease;
+  }
+  
+  .service-card:hover {
+    transform: translateY(-10px) scale(1.02);
+  }
+  
+  /* Star Field Background */
+  .star {
+    position: absolute;
+    background-color: white;
+    border-radius: 50%;
+    animation: twinkle linear infinite;
+  }
+  
+  @keyframes twinkle {
+    0% {
+      opacity: 0;
+    }
+    50% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
   }
 }
