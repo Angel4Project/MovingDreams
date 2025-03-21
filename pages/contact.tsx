@@ -15,10 +15,10 @@ export default function Contact() {
     }
     emailjs
       .send(
-        "YOUR_SERVICE_ID",
-        "YOUR_TEMPLATE_ID",
+        "service_996qwql", // Updated EmailJS service ID
+        "template_rbmwn7r", // Updated EmailJS template ID
         formData,
-        "YOUR_USER_ID"
+        "9e-rc8yPas8K1KxDP" // Updated EmailJS public key
       )
       .then(() => {
         window.location.href = "https://wa.me/0543806524?text=הודעה%20נשלחה%20בהצלחה!";
