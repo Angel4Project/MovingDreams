@@ -7,7 +7,6 @@ import PriceCalculator from "@/components/PriceCalculator";
 import TestimonialsSection from "@/components/TestimonialsSection";
 import ContactSection from "@/components/ContactSection";
 import Footer from "@/components/Footer";
-import AccessibilityWidget from "@/components/AccessibilityWidget";
 import { useLanguage } from "@/context/LanguageContext";
 
 export default function Home() {
@@ -16,10 +15,44 @@ export default function Home() {
   useEffect(() => {
     // Set up any global page effects or analytics
     window.scrollTo(0, 0);
+    
+    // Set meta tags for SEO
+    document.title = "אור להובלות | שירותי הובלה מקצועיים ואמינים";
+    
+    // Add structured data for SEO
+    const structuredData = {
+      "@context": "https://schema.org",
+      "@type": "MovingCompany",
+      "name": "אור להובלות",
+      "url": "https://www.orlehovalot.co.il",
+      "logo": "https://www.orlehovalot.co.il/logo.png",
+      "description": "חברת הובלות מקצועית ואמינה המספקת שירותי הובלת דירות, משרדים, פריטים בודדים, אחסון ושירותי מנוף.",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "ויצמן 555",
+        "addressLocality": "כפר סבא",
+        "addressRegion": "מרכז",
+        "addressCountry": "IL"
+      },
+      "openingHours": [
+        "Su-Th 06:00-22:00",
+        "Fr 08:00-14:00"
+      ],
+      "telephone": "+972545555555"
+    };
+    
+    const script = document.createElement('script');
+    script.type = 'application/ld+json';
+    script.text = JSON.stringify(structuredData);
+    document.head.appendChild(script);
+    
+    return () => {
+      document.head.removeChild(script);
+    };
   }, []);
 
   return (
-    <div dir={dir} className="font-assistant bg-light text-dark overflow-x-hidden">
+    <div dir={dir} className="font-assistant bg-cosmic text-divine overflow-x-hidden">
       <Header />
       <HeroSection />
       <ServicesSection />
@@ -29,19 +62,20 @@ export default function Home() {
       <ContactSection />
       <Footer />
       
-      {/* WhatsApp Floating Button */}
-      <a 
-        href="https://wa.me/972543806524" 
-        target="_blank" 
-        rel="noopener noreferrer"
-        className="fixed bottom-6 left-6 bg-[#25D366] text-white w-16 h-16 rounded-full flex items-center justify-center shadow-lg z-50 hover:scale-110 transition-transform"
-        aria-label="Contact us via WhatsApp"
-      >
-        <i className="fab fa-whatsapp text-3xl"></i>
-      </a>
-      
-      {/* Accessibility Widget */}
-      <AccessibilityWidget />
+      {/* Schema.org structured data for SEO */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{
+        __html: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          "name": "אור להובלות",
+          "url": "https://www.orlehovalot.co.il",
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://www.orlehovalot.co.il/search?q={search_term_string}",
+            "query-input": "required name=search_term_string"
+          }
+        })
+      }} />
     </div>
   );
 }

@@ -2,11 +2,8 @@ import { Switch, Route } from "wouter";
 import { Toaster } from "@/components/ui/toaster";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/Home";
-import { useEffect, useState } from "react";
-import CosmicLoader from "@/components/CosmicLoader";
 import { LanguageProvider } from "./context/LanguageContext";
 import FloatingSocialButtons from "./components/FloatingSocialButtons";
-import AccessibilityWidget from "./components/AccessibilityWidget";
 
 function Router() {
   return (
@@ -18,21 +15,10 @@ function Router() {
 }
 
 function App() {
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // Simulate loading for the cosmic journey animation
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 3500);
-    
-    return () => clearTimeout(timer);
-  }, []);
-  
   // Generate stars for cosmic background
   const generateStars = () => {
     const stars = [];
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < 150; i++) {
       const size = Math.random() * 2;
       const left = Math.random() * 100;
       const top = Math.random() * 100;
@@ -61,20 +47,19 @@ function App() {
       <div className="fixed inset-0 -z-10 overflow-hidden">
         {generateStars()}
         <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-cosmic via-cosmic to-slate-900 opacity-80"></div>
+        
+        {/* Animated cosmic elements */}
+        <div className="absolute top-[20%] left-[15%] w-32 h-32 rounded-full bg-primary/5 blur-xl animate-float-slow"></div>
+        <div className="absolute bottom-[30%] right-[10%] w-48 h-48 rounded-full bg-gold/5 blur-xl animate-float"></div>
+        <div className="absolute top-[40%] right-[25%] w-24 h-24 rounded-full bg-secondary/5 blur-xl animate-float-fast"></div>
       </div>
       
-      {loading ? (
-        // Don't use language context in loader to prevent circular dependency
-        <CosmicLoader />
-      ) : (
-        // Wrap main app content in language provider
-        <LanguageProvider>
-          <Router />
-          <FloatingSocialButtons />
-          <AccessibilityWidget />
-          <Toaster />
-        </LanguageProvider>
-      )}
+      {/* Wrap main app content in language provider */}
+      <LanguageProvider>
+        <Router />
+        <FloatingSocialButtons />
+        <Toaster />
+      </LanguageProvider>
     </div>
   );
 }
