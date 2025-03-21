@@ -1,56 +1,69 @@
-import { createContext, useState, useEffect, ReactNode } from 'react';
-import { translations } from '../lib/i18n';
+import React, { createContext, useState, useContext, ReactNode } from 'react';
+import { translations } from '@/lib/translations';
 
-type LanguageContextType = {
-  language: string;
-  setLanguage: (lang: string) => void;
+export type Language = 'he' | 'en' | 'ru' | 'ar';
+
+interface LanguageContextType {
+  language: Language;
+  setLanguage: (language: Language) => void;
   t: (key: string) => string;
-};
+  dir: string;
+}
 
-export const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
+const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
-type LanguageProviderProps = {
+interface LanguageProviderProps {
   children: ReactNode;
-};
+}
 
-export const LanguageProvider = ({ children }: LanguageProviderProps) => {
-  // Default to Hebrew, but check localStorage first
-  const [language, setLanguageState] = useState<string>(() => {
-    if (typeof window !== 'undefined') {
-      const savedLanguage = localStorage.getItem('language');
-      return savedLanguage || 'he';
+export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) => {
+  const [language, setLanguage] = useState<Language>('he');
+
+  const getDirection = (lang: Language) => {
+    return lang === 'he' || lang === 'ar' ? 'rtl' : 'ltr';
+  };
+
+  const translate = (key: string): string => {
+    const keys = key.split('.');
+    let value = translations[language];
+    
+    for (const k of keys) {
+      if (value && typeof value === 'object' && k in value) {
+        value = value[k as keyof typeof value];
+      } else {
+        return key; // Fallback to the key if translation is missing
+      }
     }
-    return 'he';
-  });
+    
+    return value as string;
+  };
 
-  // Update localStorage when language changes
-  useEffect(() => {
-    localStorage.setItem('language', language);
-    
-    // Set HTML dir attribute based on language
-    const dir = language === 'he' || language === 'ar' ? 'rtl' : 'ltr';
-    document.documentElement.dir = dir;
-    
-    // Set HTML lang attribute
+  // Update document direction when language changes
+  React.useEffect(() => {
     document.documentElement.lang = language;
+    document.documentElement.dir = getDirection(language);
   }, [language]);
 
-  const setLanguage = (lang: string) => {
-    setLanguageState(lang);
-  };
-
-  // Translate function
-  const t = (key: string): string => {
-    if (!translations[language] || !translations[language][key]) {
-      // Fallback to Hebrew if translation is missing
-      return translations['he'][key] || key;
-    }
-    return translations[language][key];
-  };
-
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t }}>
+    <LanguageContext.Provider 
+      value={{ 
+        language, 
+        setLanguage, 
+        t: translate,
+        dir: getDirection(language)
+      }}
+    >
       {children}
     </LanguageContext.Provider>
   );
+};
+
+export const useLanguage = (): LanguageContextType => {
+  const context = useContext(LanguageContext);
+  
+  if (context === undefined) {
+    throw new Error('useLanguage must be used within a LanguageProvider');
+  }
+  
+  return context;
 };

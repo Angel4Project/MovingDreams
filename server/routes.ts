@@ -1,87 +1,97 @@
-import type { Express, Request, Response } from "express";
+import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertLeadSchema, insertPriceQuoteSchema } from "@shared/schema";
-import { z } from "zod";
-import { fromZodError } from "zod-validation-error";
+import { ZodError } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // API routes
-  const apiRouter = app.router;
-
-  // Get testimonials
-  app.get("/api/testimonials", async (_req: Request, res: Response) => {
+  // Create API routes
+  
+  // Lead submission endpoint
+  app.post("/api/leads", async (req, res) => {
     try {
-      const testimonials = await storage.getActiveTestimonials();
-      res.json(testimonials);
-    } catch (error) {
-      console.error("Error fetching testimonials:", error);
-      res.status(500).json({ message: "Failed to fetch testimonials" });
-    }
-  });
-
-  // Submit contact form (lead)
-  app.post("/api/contact", async (req: Request, res: Response) => {
-    try {
-      // Validate request body
-      const validatedData = insertLeadSchema.parse(req.body);
+      const leadData = insertLeadSchema.parse(req.body);
+      const lead = await storage.createLead(leadData);
       
-      // Store the lead
-      const lead = await storage.createLead(validatedData);
+      // Here you would implement WhatsApp and email sending
+      // For this implementation, we'll simply return success message
       
-      // Return success response
       res.status(201).json({
         success: true,
-        message: "פרטים נשלחו בהצלחה!",
+        message: "Lead received successfully",
         data: lead
       });
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        const validationError = fromZodError(error);
+    } catch (err) {
+      if (err instanceof ZodError) {
         return res.status(400).json({
           success: false,
-          message: "שגיאה בפרטים שהוזנו",
-          errors: validationError.details
+          message: "Invalid lead data",
+          errors: err.errors
         });
       }
       
-      console.error("Error submitting contact form:", error);
       res.status(500).json({
         success: false,
-        message: "אירעה שגיאה בשליחת הטופס, אנא נסה שנית."
+        message: "Failed to process lead"
       });
     }
   });
-
-  // Submit price calculator (quote)
-  app.post("/api/price-quote", async (req: Request, res: Response) => {
+  
+  // Get all leads (admin endpoint)
+  app.get("/api/leads", async (req, res) => {
     try {
-      // Validate request body
-      const validatedData = insertPriceQuoteSchema.parse(req.body);
+      const leads = await storage.getLeads();
+      res.status(200).json({
+        success: true,
+        data: leads
+      });
+    } catch (err) {
+      res.status(500).json({
+        success: false,
+        message: "Failed to retrieve leads"
+      });
+    }
+  });
+  
+  // Price quote submission endpoint
+  app.post("/api/price-quotes", async (req, res) => {
+    try {
+      const quoteData = insertPriceQuoteSchema.parse(req.body);
+      const quote = await storage.createPriceQuote(quoteData);
       
-      // Store the quote and calculate price
-      const quote = await storage.createPriceQuote(validatedData);
-      
-      // Return success response with estimated price
       res.status(201).json({
         success: true,
-        message: "הצעת המחיר נשלחה בהצלחה!",
+        message: "Price quote created successfully",
         data: quote
       });
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        const validationError = fromZodError(error);
+    } catch (err) {
+      if (err instanceof ZodError) {
         return res.status(400).json({
           success: false,
-          message: "שגיאה בפרטים שהוזנו",
-          errors: validationError.details
+          message: "Invalid price quote data",
+          errors: err.errors
         });
       }
       
-      console.error("Error submitting price quote:", error);
       res.status(500).json({
         success: false,
-        message: "אירעה שגיאה בחישוב הצעת המחיר, אנא נסה שנית."
+        message: "Failed to process price quote"
+      });
+    }
+  });
+  
+  // Get all price quotes (admin endpoint)
+  app.get("/api/price-quotes", async (req, res) => {
+    try {
+      const quotes = await storage.getPriceQuotes();
+      res.status(200).json({
+        success: true,
+        data: quotes
+      });
+    } catch (err) {
+      res.status(500).json({
+        success: false,
+        message: "Failed to retrieve price quotes"
       });
     }
   });

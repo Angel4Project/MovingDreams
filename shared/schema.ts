@@ -1,58 +1,59 @@
-import { pgTable, text, serial, timestamp, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Lead submissions from contact form
-export const leads = pgTable("leads", {
+export const users = pgTable("users", {
   id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-  phone: text("phone").notNull(),
-  email: text("email"),
-  serviceType: text("service_type").notNull(),
-  message: text("message"),
-  movingDate: text("moving_date"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  username: text("username").notNull().unique(),
+  password: text("password").notNull(),
 });
 
-// Price calculator submissions
+export const insertUserSchema = createInsertSchema(users).pick({
+  username: true,
+  password: true,
+});
+
+// Lead schema - for storing contact form submissions
+export const leads = pgTable("leads", {
+  id: serial("id").primaryKey(),
+  fullName: text("full_name").notNull(),
+  phone: text("phone").notNull(),
+  email: text("email"),
+  preferredDate: text("preferred_date"),
+  movingType: text("moving_type").notNull(),
+  details: text("details"),
+  consentToMarketing: boolean("consent_to_marketing").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertLeadSchema = createInsertSchema(leads).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Price Quote schema - for storing calculator quote requests
 export const priceQuotes = pgTable("price_quotes", {
   id: serial("id").primaryKey(),
   movingType: text("moving_type").notNull(),
-  rooms: integer("rooms"),
-  itemType: text("item_type"),
-  origin: text("origin").notNull(),
-  destination: text("destination").notNull(),
-  movingDate: text("moving_date").notNull(),
-  includePacking: boolean("include_packing").default(false),
-  includeAssembly: boolean("include_assembly").default(false),
-  includeStorage: boolean("include_storage").default(false),
-  estimatedPrice: integer("estimated_price"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  size: text("size"), // apartment size, office size, or item type
+  floor: integer("floor").default(0),
+  distance: integer("distance").notNull(),
+  additionalServices: text("additional_services").array(),
+  estimatedPrice: text("estimated_price"),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Testimonials
-export const testimonials = pgTable("testimonials", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-  serviceType: text("service_type").notNull(),
-  location: text("location").notNull(),
-  rating: integer("rating").notNull(),
-  content: text("content").notNull(),
-  details: text("details"),
-  imageUrl: text("image_url"),
-  active: boolean("active").default(true),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+export const insertPriceQuoteSchema = createInsertSchema(priceQuotes).omit({
+  id: true,
+  createdAt: true,
 });
-
-// Zod schemas for validation
-export const insertLeadSchema = createInsertSchema(leads).omit({ id: true, createdAt: true });
-export const insertPriceQuoteSchema = createInsertSchema(priceQuotes).omit({ id: true, createdAt: true, estimatedPrice: true });
-export const insertTestimonialSchema = createInsertSchema(testimonials).omit({ id: true, createdAt: true });
 
 // Types
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type User = typeof users.$inferSelect;
+
 export type InsertLead = z.infer<typeof insertLeadSchema>;
-export type InsertPriceQuote = z.infer<typeof insertPriceQuoteSchema>;
-export type InsertTestimonial = z.infer<typeof insertTestimonialSchema>;
 export type Lead = typeof leads.$inferSelect;
+
+export type InsertPriceQuote = z.infer<typeof insertPriceQuoteSchema>;
 export type PriceQuote = typeof priceQuotes.$inferSelect;
-export type Testimonial = typeof testimonials.$inferSelect;

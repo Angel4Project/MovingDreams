@@ -1,455 +1,466 @@
-import { useState, useRef, useEffect } from 'react';
-import { motion, useInView } from 'framer-motion';
-import { useLanguage } from '../hooks/useLanguage';
+import { useState, useEffect, useRef } from 'react';
+import { motion, useAnimation } from 'framer-motion';
+import { useInView } from 'react-intersection-observer';
+import { useLanguage } from '@/context/LanguageContext';
+import TruckModel from '@/components/three/TruckModel';
+import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from '@/lib/queryClient';
-import { useMutation } from '@tanstack/react-query';
-import TruckModel from './3d/TruckModel';
-import { 
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-
-// Create schema based on expected quote data
-const calculatorSchema = z.object({
-  movingType: z.enum(["apartment", "office", "single-item"], {
-    required_error: "סוג ההובלה הוא שדה חובה",
-  }),
-  rooms: z.string().optional(),
-  itemType: z.string().optional(),
-  origin: z.string({
-    required_error: "כתובת המוצא היא שדה חובה",
-  }).min(3, { message: "כתובת המוצא חייבת להכיל לפחות 3 תווים" }),
-  destination: z.string({
-    required_error: "כתובת היעד היא שדה חובה",
-  }).min(3, { message: "כתובת היעד חייבת להכיל לפחות 3 תווים" }),
-  movingDate: z.string({
-    required_error: "תאריך ההובלה הוא שדה חובה",
-  }),
-  includePacking: z.boolean().default(false),
-  includeAssembly: z.boolean().default(false),
-  includeStorage: z.boolean().default(false),
-});
-
-type CalculatorFormValues = z.infer<typeof calculatorSchema>;
 
 const PriceCalculator = () => {
   const { t } = useLanguage();
   const { toast } = useToast();
-  const [isAnimating, setIsAnimating] = useState(false);
-  const [estimatedPrice, setEstimatedPrice] = useState<{ 
-    basePrice: number;
-    additionalServices: number;
-    distancePrice: number;
-    totalPrice: number;
-  }>({
-    basePrice: 1500,
-    additionalServices: 0,
-    distancePrice: 300,
-    totalPrice: 1800
+  const controls = useAnimation();
+  const [ref, inView] = useInView({
+    threshold: 0.1,
+    triggerOnce: true
   });
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, amount: 0.1 });
 
-  const form = useForm<CalculatorFormValues>({
-    resolver: zodResolver(calculatorSchema),
-    defaultValues: {
-      movingType: "apartment",
-      rooms: "3",
-      origin: "",
-      destination: "",
-      movingDate: new Date().toISOString().split('T')[0],
-      includePacking: false,
-      includeAssembly: false,
-      includeStorage: false
-    }
-  });
+  // Form state
+  const [movingType, setMovingType] = useState('apartment');
+  const [apartmentSize, setApartmentSize] = useState('1');
+  const [officeSize, setOfficeSize] = useState('small');
+  const [itemType, setItemType] = useState('fridge');
+  const [floor, setFloor] = useState(0);
+  const [distance, setDistance] = useState(50);
+  const [additionalServices, setAdditionalServices] = useState<string[]>([]);
+  const [estimatedPrice, setEstimatedPrice] = useState('₪1,500 - ₪2,200');
+  const [truckCapacity, setTruckCapacity] = useState('35%');
+  const [truckType, setTruckType] = useState('משאית 12 טון');
   
-  const mutation = useMutation({
-    mutationFn: async (data: CalculatorFormValues) => {
-      return apiRequest("POST", "/api/price-quote", data);
-    },
-    onSuccess: async (response) => {
-      const data = await response.json();
-      setEstimatedPrice({
-        basePrice: Math.floor(data.data.estimatedPrice * 0.7),
-        additionalServices: calculateAdditionalServices(form.getValues()),
-        distancePrice: 300,
-        totalPrice: data.data.estimatedPrice
-      });
+  // Animation controls
+  useEffect(() => {
+    if (inView) {
+      controls.start('visible');
+    }
+  }, [controls, inView]);
+
+  // Update price estimation when form values change
+  useEffect(() => {
+    updatePrice();
+  }, [movingType, apartmentSize, officeSize, itemType, floor, distance, additionalServices]);
+
+  const variants = {
+    hidden: { opacity: 0, y: 50 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.8, ease: "easeOut" }
+    }
+  };
+
+  const toggleAdditionalService = (service: string) => {
+    if (additionalServices.includes(service)) {
+      setAdditionalServices(additionalServices.filter(s => s !== service));
+    } else {
+      setAdditionalServices([...additionalServices, service]);
+    }
+  };
+
+  const updatePrice = () => {
+    // Base price calculation
+    let basePrice = 1000;
+    let maxPrice = 1500;
+    
+    // Add price based on moving type
+    if (movingType === 'apartment') {
+      const sizeMultiplier = parseInt(apartmentSize) * 500;
+      basePrice += sizeMultiplier;
+      maxPrice += sizeMultiplier + 700;
+      
+      // Floor price
+      const floorPrice = floor * 250;
+      basePrice += floorPrice;
+      maxPrice += floorPrice;
+      
+      // Update truck capacity based on apartment size
+      const capacityValue = 20 + parseInt(apartmentSize) * 15;
+      setTruckCapacity(`${capacityValue}%`);
+      
+      // Update truck type based on apartment size
+      if (parseInt(apartmentSize) <= 2) {
+        setTruckType('משאית 7 טון');
+      } else {
+        setTruckType('משאית 12 טון');
+      }
+    } else if (movingType === 'office') {
+      const officeMultipliers: Record<string, number> = {
+        small: 1000,
+        medium: 2000,
+        large: 3500,
+        xl: 5000
+      };
+      
+      basePrice += officeMultipliers[officeSize];
+      maxPrice += officeMultipliers[officeSize] + 1000;
+      
+      // Update truck capacity and type
+      if (officeSize === 'small') {
+        setTruckCapacity('40%');
+        setTruckType('משאית 7 טון');
+      } else if (officeSize === 'medium') {
+        setTruckCapacity('60%');
+        setTruckType('משאית 12 טון');
+      } else {
+        setTruckCapacity('85%');
+        setTruckType('משאית 12 טון');
+      }
+    } else if (movingType === 'item') {
+      const itemPrices: Record<string, number> = {
+        fridge: 400,
+        'washing-machine': 350,
+        sofa: 500,
+        bed: 450,
+        piano: 1200,
+        cabinet: 550,
+        other: 500
+      };
+      
+      basePrice = itemPrices[itemType];
+      maxPrice = basePrice + 200;
+      
+      // Update truck capacity and type
+      setTruckCapacity('15%');
+      
+      if (itemType === 'piano') {
+        setTruckType('משאית 7 טון');
+      } else {
+        setTruckType('טנדר');
+      }
+    }
+    
+    // Distance calculation
+    basePrice += distance * 2;
+    maxPrice += distance * 3;
+    
+    // Additional services
+    if (additionalServices.includes('packing')) {
+      basePrice += 500;
+      maxPrice += 800;
+    }
+    
+    if (additionalServices.includes('disassembly')) {
+      basePrice += 300;
+      maxPrice += 500;
+    }
+    
+    if (additionalServices.includes('storage')) {
+      basePrice += 700;
+      maxPrice += 1200;
+    }
+    
+    if (additionalServices.includes('insurance')) {
+      basePrice += 250;
+      maxPrice += 400;
+    }
+    
+    setEstimatedPrice(`₪${basePrice.toLocaleString()} - ₪${maxPrice.toLocaleString()}`);
+  };
+
+  const handleGetQuote = async () => {
+    try {
+      const quoteData = {
+        movingType,
+        size: movingType === 'apartment' 
+          ? apartmentSize 
+          : movingType === 'office' 
+            ? officeSize 
+            : itemType,
+        floor,
+        distance,
+        additionalServices,
+        estimatedPrice
+      };
+      
+      await apiRequest('POST', '/api/price-quotes', quoteData);
       
       toast({
-        title: t('priceCalculated'),
-        description: t('priceCalculatedDesc'),
+        title: t('common.success'),
+        description: t('contact.form.success'),
       });
-    },
-    onError: (error) => {
+      
+      // Scroll to contact section
+      document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' });
+    } catch (error) {
       toast({
-        title: t('errorCalculatingPrice'),
-        description: error.message,
-        variant: "destructive"
+        title: t('common.error'),
+        description: error instanceof Error ? error.message : String(error),
+        variant: 'destructive',
       });
     }
-  });
-
-  // Calculate additional services cost
-  const calculateAdditionalServices = (values: CalculatorFormValues) => {
-    let total = 0;
-    if (values.includePacking) total += 500;
-    if (values.includeAssembly) total += 400;
-    if (values.includeStorage) total += 800;
-    return total;
-  };
-
-  // Watch the moving type to show/hide relevant fields
-  const movingType = form.watch("movingType");
-
-  // Handle form submission
-  const onSubmit = async (values: CalculatorFormValues) => {
-    setIsAnimating(true);
-    
-    // Start the truck animation
-    setTimeout(() => {
-      mutation.mutate(values);
-      
-      // End animation after 4 seconds
-      setTimeout(() => {
-        setIsAnimating(false);
-      }, 4000);
-    }, 500);
-  };
-
-  // Handle WhatsApp sharing
-  const handleWhatsAppShare = () => {
-    const values = form.getValues();
-    const movingTypeLabel = values.movingType === 'apartment' 
-      ? t('apartment')
-      : values.movingType === 'office' 
-        ? t('office') 
-        : t('singleItem');
-
-    let message = `${t('whatsappQuoteMessage')}\n`;
-    message += `${t('movingType')}: ${movingTypeLabel}\n`;
-    message += `${t('origin')}: ${values.origin}\n`;
-    message += `${t('destination')}: ${values.destination}\n`;
-    message += `${t('movingDate')}: ${values.movingDate}\n`;
-    message += `${t('estimatedPrice')}: ₪${estimatedPrice.totalPrice}\n`;
-
-    const encodedMessage = encodeURIComponent(message);
-    window.open(`https://wa.me/972543806524?text=${encodedMessage}`, '_blank');
   };
 
   return (
-    <section id="calculator" className="py-20 bg-white" ref={ref}>
-      <div className="container mx-auto px-4">
-        <div className="text-center mb-16">
-          <motion.h2 
-            className="text-4xl font-bold mb-4"
-            initial={{ opacity: 0, y: 20 }}
-            animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-            transition={{ duration: 0.5 }}
-          >
-            {t('calculatorTitle')}
-          </motion.h2>
-          <motion.p 
-            className="text-xl text-gray-600 max-w-3xl mx-auto"
-            initial={{ opacity: 0, y: 20 }}
-            animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-          >
-            {t('calculatorSubtitle')}
-          </motion.p>
-        </div>
+    <section id="calculator" className="py-20 bg-light relative overflow-hidden">
+      <div className="absolute top-0 right-0 w-full h-64 bg-gradient-to-b from-white to-transparent"></div>
+      
+      <div className="container mx-auto px-4 relative z-10">
+        <motion.div 
+          ref={ref}
+          variants={variants}
+          initial="hidden"
+          animate={controls}
+          className="text-center mb-12"
+        >
+          <h2 className="text-3xl md:text-4xl font-heebo font-bold text-secondary mb-4">
+            {t('calculator.title')}
+          </h2>
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            {t('calculator.subtitle')}
+          </p>
+        </motion.div>
         
         <motion.div 
-          className="flex flex-col lg:flex-row bg-gray-light rounded-2xl overflow-hidden shadow-xl"
-          initial={{ opacity: 0, y: 20 }}
-          animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
+          variants={variants}
+          initial="hidden"
+          animate={controls}
+          className="bg-white rounded-xl shadow-xl overflow-hidden"
         >
-          <div className="lg:w-1/2 p-8">
-            <h3 className="text-2xl font-bold mb-6">{t('movingDetails')}</h3>
-            
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <FormField
-                  control={form.control}
-                  name="movingType"
-                  render={({ field }) => (
-                    <FormItem className="mb-6">
-                      <FormLabel className="block text-gray-800 font-bold mb-2">{t('movingType')}</FormLabel>
-                      <FormControl>
-                        <RadioGroup 
-                          onValueChange={field.onChange} 
-                          defaultValue={field.value}
-                          className="grid grid-cols-1 md:grid-cols-3 gap-4"
-                        >
-                          <div className="relative">
-                            <RadioGroupItem value="apartment" id="apartment" className="hidden peer" />
-                            <label 
-                              htmlFor="apartment" 
-                              className="block p-4 border-2 rounded-lg cursor-pointer transition-all peer-checked:border-primary peer-checked:bg-primary/10 text-center"
-                            >
-                              <i className="fas fa-home text-2xl mb-2"></i>
-                              <div>{t('apartment')}</div>
-                            </label>
-                          </div>
-                          
-                          <div className="relative">
-                            <RadioGroupItem value="office" id="office" className="hidden peer" />
-                            <label 
-                              htmlFor="office" 
-                              className="block p-4 border-2 rounded-lg cursor-pointer transition-all peer-checked:border-primary peer-checked:bg-primary/10 text-center"
-                            >
-                              <i className="fas fa-building text-2xl mb-2"></i>
-                              <div>{t('office')}</div>
-                            </label>
-                          </div>
-                          
-                          <div className="relative">
-                            <RadioGroupItem value="single-item" id="single-item" className="hidden peer" />
-                            <label 
-                              htmlFor="single-item" 
-                              className="block p-4 border-2 rounded-lg cursor-pointer transition-all peer-checked:border-primary peer-checked:bg-primary/10 text-center"
-                            >
-                              <i className="fas fa-couch text-2xl mb-2"></i>
-                              <div>{t('singleItem')}</div>
-                            </label>
-                          </div>
-                        </RadioGroup>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {movingType === "apartment" && (
-                  <FormField
-                    control={form.control}
-                    name="rooms"
-                    render={({ field }) => (
-                      <FormItem className="mb-6">
-                        <FormLabel className="block text-gray-800 font-bold mb-2">{t('apartmentSize')}</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder={t('selectRooms')} />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="1">1 {t('room')}</SelectItem>
-                            <SelectItem value="2">2 {t('rooms')}</SelectItem>
-                            <SelectItem value="3">3 {t('rooms')}</SelectItem>
-                            <SelectItem value="4">4 {t('rooms')}</SelectItem>
-                            <SelectItem value="5">5 {t('rooms')}</SelectItem>
-                            <SelectItem value="6+">6+ {t('rooms')}</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
-
-                {movingType === "single-item" && (
-                  <FormField
-                    control={form.control}
-                    name="itemType"
-                    render={({ field }) => (
-                      <FormItem className="mb-6">
-                        <FormLabel className="block text-gray-800 font-bold mb-2">{t('itemType')}</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder={t('selectItemType')} />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="furniture">{t('furniture')}</SelectItem>
-                            <SelectItem value="appliance">{t('appliance')}</SelectItem>
-                            <SelectItem value="piano">{t('piano')}</SelectItem>
-                            <SelectItem value="safe">{t('safe')}</SelectItem>
-                            <SelectItem value="other">{t('other')}</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
-                
-                <FormField
-                  control={form.control}
-                  name="origin"
-                  render={({ field }) => (
-                    <FormItem className="mb-6">
-                      <FormLabel className="block text-gray-800 font-bold mb-2">{t('origin')}</FormLabel>
-                      <FormControl>
-                        <Input placeholder={t('enterOrigin')} {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="destination"
-                  render={({ field }) => (
-                    <FormItem className="mb-6">
-                      <FormLabel className="block text-gray-800 font-bold mb-2">{t('destination')}</FormLabel>
-                      <FormControl>
-                        <Input placeholder={t('enterDestination')} {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="movingDate"
-                  render={({ field }) => (
-                    <FormItem className="mb-6">
-                      <FormLabel className="block text-gray-800 font-bold mb-2">{t('movingDate')}</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <div className="mb-6">
-                  <FormLabel className="block text-gray-800 font-bold mb-2">{t('additionalServices')}</FormLabel>
-                  <div className="space-y-2">
-                    <FormField
-                      control={form.control}
-                      name="includePacking"
-                      render={({ field }) => (
-                        <FormItem className="flex items-center">
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                              id="packing"
-                              className="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary"
-                            />
-                          </FormControl>
-                          <FormLabel htmlFor="packing" className="mr-2">
-                            {t('packingServices')}
-                          </FormLabel>
-                        </FormItem>
-                      )}
-                    />
+          <div className="grid grid-cols-1 lg:grid-cols-2">
+            {/* Calculator Form */}
+            <div className="p-8">
+              <h3 className="text-2xl font-heebo font-bold text-secondary mb-6">{t('calculator.details')}</h3>
+              
+              <form className="space-y-6">
+                {/* Moving Type */}
+                <div>
+                  <label className="block text-gray-700 font-bold mb-3">{t('calculator.movingType')}</label>
+                  <div className="grid grid-cols-3 gap-4">
+                    <label 
+                      className={`relative bg-light rounded-lg p-4 text-center cursor-pointer transition-all border-2 ${
+                        movingType === 'apartment' ? 'border-secondary' : 'border-transparent hover:border-secondary'
+                      }`}
+                      onClick={() => setMovingType('apartment')}
+                    >
+                      <input 
+                        type="radio" 
+                        name="moving-type" 
+                        value="apartment" 
+                        className="absolute opacity-0" 
+                        checked={movingType === 'apartment'}
+                        onChange={() => setMovingType('apartment')}
+                      />
+                      <i className={`fas fa-home text-2xl mb-2 ${movingType === 'apartment' ? 'text-primary' : ''}`}></i>
+                      <span className="block text-sm">{t('services.apartment.title')}</span>
+                    </label>
                     
-                    <FormField
-                      control={form.control}
-                      name="includeAssembly"
-                      render={({ field }) => (
-                        <FormItem className="flex items-center">
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                              id="assembly"
-                              className="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary"
-                            />
-                          </FormControl>
-                          <FormLabel htmlFor="assembly" className="mr-2">
-                            {t('assemblyServices')}
-                          </FormLabel>
-                        </FormItem>
-                      )}
-                    />
+                    <label 
+                      className={`relative bg-light rounded-lg p-4 text-center cursor-pointer transition-all border-2 ${
+                        movingType === 'office' ? 'border-secondary' : 'border-transparent hover:border-secondary'
+                      }`}
+                      onClick={() => setMovingType('office')}
+                    >
+                      <input 
+                        type="radio" 
+                        name="moving-type" 
+                        value="office" 
+                        className="absolute opacity-0"
+                        checked={movingType === 'office'}
+                        onChange={() => setMovingType('office')}
+                      />
+                      <i className={`fas fa-building text-2xl mb-2 ${movingType === 'office' ? 'text-primary' : ''}`}></i>
+                      <span className="block text-sm">{t('services.office.title')}</span>
+                    </label>
                     
-                    <FormField
-                      control={form.control}
-                      name="includeStorage"
-                      render={({ field }) => (
-                        <FormItem className="flex items-center">
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                              id="storage"
-                              className="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary"
-                            />
-                          </FormControl>
-                          <FormLabel htmlFor="storage" className="mr-2">
-                            {t('storageServices')}
-                          </FormLabel>
-                        </FormItem>
-                      )}
-                    />
+                    <label 
+                      className={`relative bg-light rounded-lg p-4 text-center cursor-pointer transition-all border-2 ${
+                        movingType === 'item' ? 'border-secondary' : 'border-transparent hover:border-secondary'
+                      }`}
+                      onClick={() => setMovingType('item')}
+                    >
+                      <input 
+                        type="radio" 
+                        name="moving-type" 
+                        value="item" 
+                        className="absolute opacity-0"
+                        checked={movingType === 'item'}
+                        onChange={() => setMovingType('item')}
+                      />
+                      <i className={`fas fa-couch text-2xl mb-2 ${movingType === 'item' ? 'text-primary' : ''}`}></i>
+                      <span className="block text-sm">{t('services.singleItem.title')}</span>
+                    </label>
                   </div>
                 </div>
                 
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <Button 
-                    type="submit" 
-                    className="px-8 py-4 h-auto rounded-lg bg-primary text-white text-center text-lg font-bold hover:bg-opacity-90 transition transform hover:scale-105 flex-1"
-                    disabled={mutation.isPending || isAnimating}
-                  >
-                    {mutation.isPending ? t('calculating') : t('calculatePrice')}
-                  </Button>
-                  <Button 
-                    type="button" 
-                    onClick={handleWhatsAppShare}
-                    className="px-8 py-4 h-auto rounded-lg bg-secondary text-white text-center text-lg font-bold hover:bg-opacity-90 transition transform hover:scale-105 flex-1"
-                    disabled={mutation.isPending || isAnimating}
-                  >
-                    {t('sendToWhatsApp')}
-                  </Button>
+                {/* Apartment Size (shows only if apartment is selected) */}
+                {movingType === 'apartment' && (
+                  <div>
+                    <label className="block text-gray-700 font-bold mb-3">{t('calculator.apartmentSize')}</label>
+                    <div className="grid grid-cols-4 gap-4 mb-4">
+                      {['1', '2', '3', '4'].map((size) => (
+                        <label 
+                          key={size}
+                          className={`relative bg-light rounded-lg p-3 text-center cursor-pointer transition-all border-2 ${
+                            apartmentSize === size ? 'border-secondary' : 'border-transparent hover:border-secondary'
+                          }`}
+                          onClick={() => setApartmentSize(size)}
+                        >
+                          <input 
+                            type="radio" 
+                            name="apartment-size" 
+                            value={size} 
+                            className="absolute opacity-0"
+                            checked={apartmentSize === size}
+                            onChange={() => setApartmentSize(size)}
+                          />
+                          <span className="block text-lg font-bold">{size === '4' ? '4+' : size}</span>
+                          <span className="block text-xs">חדרים</span>
+                        </label>
+                      ))}
+                    </div>
+                    
+                    <div className="bg-light rounded-lg p-4">
+                      <label className="block text-gray-700 font-bold mb-2">{t('calculator.floor')}</label>
+                      <div className="flex items-center">
+                        <button 
+                          type="button" 
+                          className="bg-white text-primary w-10 h-10 rounded-lg shadow flex items-center justify-center"
+                          onClick={() => floor > 0 && setFloor(floor - 1)}
+                        >
+                          <i className="fas fa-minus"></i>
+                        </button>
+                        <div className="flex-1 text-center">
+                          <span className="text-xl font-bold">{floor}</span>
+                        </div>
+                        <button 
+                          type="button" 
+                          className="bg-white text-primary w-10 h-10 rounded-lg shadow flex items-center justify-center"
+                          onClick={() => setFloor(floor + 1)}
+                        >
+                          <i className="fas fa-plus"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Office Options */}
+                {movingType === 'office' && (
+                  <div>
+                    <label className="block text-gray-700 font-bold mb-3">{t('calculator.officeSize')}</label>
+                    <select 
+                      className="w-full bg-light border-2 border-gray-200 rounded-lg px-4 py-3 focus:outline-none focus:border-secondary transition-colors"
+                      value={officeSize}
+                      onChange={(e) => setOfficeSize(e.target.value)}
+                    >
+                      <option value="small">קטן (עד 50 מ"ר)</option>
+                      <option value="medium">בינוני (50-100 מ"ר)</option>
+                      <option value="large">גדול (100-200 מ"ר)</option>
+                      <option value="xl">גדול מאוד (200+ מ"ר)</option>
+                    </select>
+                  </div>
+                )}
+                
+                {/* Single Item Options */}
+                {movingType === 'item' && (
+                  <div>
+                    <label className="block text-gray-700 font-bold mb-3">{t('calculator.itemType')}</label>
+                    <select 
+                      className="w-full bg-light border-2 border-gray-200 rounded-lg px-4 py-3 focus:outline-none focus:border-secondary transition-colors"
+                      value={itemType}
+                      onChange={(e) => setItemType(e.target.value)}
+                    >
+                      <option value="fridge">מקרר</option>
+                      <option value="washing-machine">מכונת כביסה</option>
+                      <option value="sofa">ספה</option>
+                      <option value="bed">מיטה</option>
+                      <option value="piano">פסנתר</option>
+                      <option value="cabinet">ארון</option>
+                      <option value="other">אחר</option>
+                    </select>
+                  </div>
+                )}
+                
+                {/* Additional Services */}
+                <div>
+                  <label className="block text-gray-700 font-bold mb-3">{t('calculator.additionalServices')}</label>
+                  <div className="space-y-3">
+                    {[
+                      { id: 'packing', label: t('calculator.services.packing'), icon: 'box' },
+                      { id: 'disassembly', label: t('calculator.services.disassembly'), icon: 'tools' },
+                      { id: 'storage', label: t('calculator.services.storage'), icon: 'warehouse' },
+                      { id: 'insurance', label: t('calculator.services.insurance'), icon: 'shield-alt' }
+                    ].map((service) => (
+                      <label key={service.id} className="flex items-center cursor-pointer group">
+                        <input 
+                          type="checkbox" 
+                          name={`service-${service.id}`} 
+                          className="form-checkbox hidden"
+                          checked={additionalServices.includes(service.id)}
+                          onChange={() => toggleAdditionalService(service.id)}
+                        />
+                        <div 
+                          className={`w-6 h-6 border-2 rounded mr-3 flex items-center justify-center transition-colors ${
+                            additionalServices.includes(service.id) 
+                              ? 'bg-primary border-primary' 
+                              : 'border-gray-300 group-hover:border-secondary'
+                          }`}
+                        >
+                          <i 
+                            className={`fas fa-check text-white text-sm ${
+                              additionalServices.includes(service.id) ? 'opacity-100' : 'opacity-0'
+                            }`}
+                          ></i>
+                        </div>
+                        <span>{service.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                
+                {/* Distance */}
+                <div>
+                  <label className="block text-gray-700 font-bold mb-3">{t('calculator.distance')}</label>
+                  <input 
+                    type="range" 
+                    min="1" 
+                    max="1000" 
+                    value={distance}
+                    onChange={(e) => setDistance(parseInt(e.target.value))}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between">
+                    <span>1</span>
+                    <span className="font-bold">{distance} ק"מ</span>
+                    <span>1000+</span>
+                  </div>
                 </div>
               </form>
-            </Form>
-          </div>
-          
-          <div className="lg:w-1/2 bg-secondary text-white p-8 flex flex-col">
-            <h3 className="text-2xl font-bold mb-6">{t('movingSimulation')}</h3>
-            
-            <div className="truck-container flex-1 relative mb-6 bg-[rgba(255,255,255,0.1)] rounded-xl p-4">
-              <TruckModel isAnimating={isAnimating} />
+              
+              <div className="mt-8">
+                <div className="flex justify-between items-center mb-4">
+                  <span className="text-xl font-bold">{t('calculator.estimation')}</span>
+                  <span className="text-2xl font-bold text-primary">{estimatedPrice}</span>
+                </div>
+                
+                <div className="text-sm text-gray-500 mb-6">
+                  {t('calculator.disclaimer')}
+                </div>
+                
+                <button 
+                  type="button" 
+                  className="w-full bg-primary text-white rounded-lg py-4 px-6 text-lg font-bold hover:bg-opacity-90 transition-colors shadow-lg flex items-center justify-center"
+                  onClick={handleGetQuote}
+                >
+                  <span>{t('calculator.getQuote')}</span>
+                  <i className="fas fa-arrow-left mr-2"></i>
+                </button>
+              </div>
             </div>
             
-            <div className="bg-[rgba(255,255,255,0.2)] p-6 rounded-xl">
-              <h4 className="text-xl font-bold mb-4">{t('priceEstimate')}</h4>
-              
-              <div className="space-y-4">
-                <div className="flex justify-between">
-                  <span>{t('basePrice')}:</span>
-                  <span id="base-price">₪{estimatedPrice.basePrice.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>{t('additionalServices')}:</span>
-                  <span id="additional-services">₪{estimatedPrice.additionalServices.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>{t('distance')}:</span>
-                  <span id="distance-price">₪{estimatedPrice.distancePrice.toLocaleString()}</span>
-                </div>
-                <div className="h-px bg-white opacity-30 my-2"></div>
-                <div className="flex justify-between text-xl font-bold">
-                  <span>{t('total')}:</span>
-                  <span id="total-price">₪{estimatedPrice.totalPrice.toLocaleString()}</span>
-                </div>
+            {/* 3D Truck Visualization */}
+            <div className="bg-gray-900 relative">
+              <div className="w-full" style={{ minHeight: '600px' }}>
+                <TruckModel capacity={parseFloat(truckCapacity)} />
               </div>
-              
-              <div className="mt-6 text-sm opacity-80">
-                * {t('priceDisclaimer')}
+              <div className="absolute bottom-0 left-0 w-full bg-black bg-opacity-70 text-white p-4 flex justify-between items-center">
+                <div>
+                  <span className="font-bold">{t('calculator.truck')} </span>
+                  <span>{truckType}</span>
+                </div>
+                <div>
+                  <span className="font-bold">{t('calculator.capacity')} </span>
+                  <span>{truckCapacity}</span>
+                </div>
               </div>
             </div>
           </div>
