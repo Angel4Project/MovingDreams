@@ -1,470 +1,546 @@
-import { useState, useEffect, useRef } from 'react';
-import { motion, useAnimation } from 'framer-motion';
-import { useInView } from 'react-intersection-observer';
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { useLanguage } from '@/context/LanguageContext';
 import TruckModel from '@/components/three/TruckModel';
-import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
+import { z } from 'zod';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useMutation } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
+import { toast } from '@/hooks/use-toast';
+
+// Price calculator form schema
+const priceCalculatorSchema = z.object({
+  movingType: z.string({ required_error: 'Please select a moving type' }),
+  size: z.string().optional().nullable(),
+  floor: z.coerce.number().min(0).max(50).optional().nullable(),
+  distance: z.coerce.number().min(1, { message: 'Distance must be at least 1 km' }),
+  additionalServices: z.array(z.string()).optional().nullable(),
+});
+
+type PriceCalculatorValues = z.infer<typeof priceCalculatorSchema>;
 
 const PriceCalculator = () => {
   const { t } = useLanguage();
-  const { toast } = useToast();
-  const controls = useAnimation();
-  const [ref, inView] = useInView({
-    threshold: 0.1,
-    triggerOnce: true
-  });
-
-  // Form state
-  const [movingType, setMovingType] = useState('apartment');
-  const [apartmentSize, setApartmentSize] = useState('1');
-  const [officeSize, setOfficeSize] = useState('small');
-  const [itemType, setItemType] = useState('fridge');
-  const [floor, setFloor] = useState(0);
-  const [distance, setDistance] = useState(50);
-  const [additionalServices, setAdditionalServices] = useState<string[]>([]);
-  const [estimatedPrice, setEstimatedPrice] = useState('₪1,500 - ₪2,200');
-  const [truckCapacity, setTruckCapacity] = useState('35%');
-  const [truckType, setTruckType] = useState('משאית 12 טון');
+  const [estimatedPrice, setEstimatedPrice] = useState<number | null>(null);
+  const [capacity, setCapacity] = useState(35); // Default capacity for the 3D truck model
   
-  // Animation controls
+  const form = useForm<PriceCalculatorValues>({
+    resolver: zodResolver(priceCalculatorSchema),
+    defaultValues: {
+      movingType: '',
+      size: '',
+      floor: 0,
+      distance: 10,
+      additionalServices: [],
+    },
+  });
+  
+  const { watch, setValue } = form;
+  const watchedValues = watch();
+  
+  // Update the truck capacity based on form values
   useEffect(() => {
-    if (inView) {
-      controls.start('visible');
-    }
-  }, [controls, inView]);
-
-  // Update price estimation when form values change
-  useEffect(() => {
-    updatePrice();
-  }, [movingType, apartmentSize, officeSize, itemType, floor, distance, additionalServices]);
-
-  const variants = {
-    hidden: { opacity: 0, y: 50 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.8, ease: "easeOut" }
-    }
-  };
-
-  const toggleAdditionalService = (service: string) => {
-    if (additionalServices.includes(service)) {
-      setAdditionalServices(additionalServices.filter(s => s !== service));
-    } else {
-      setAdditionalServices([...additionalServices, service]);
-    }
-  };
-
-  const updatePrice = () => {
-    // Base price calculation
-    let basePrice = 1000;
-    let maxPrice = 1500;
+    const { movingType, size, additionalServices } = watchedValues;
     
-    // Add price based on moving type
+    let newCapacity = 35; // Default
+    
     if (movingType === 'apartment') {
-      const sizeMultiplier = parseInt(apartmentSize) * 500;
-      basePrice += sizeMultiplier;
-      maxPrice += sizeMultiplier + 700;
-      
-      // Floor price
-      const floorPrice = floor * 250;
-      basePrice += floorPrice;
-      maxPrice += floorPrice;
-      
-      // Update truck capacity based on apartment size
-      const capacityValue = 20 + parseInt(apartmentSize) * 15;
-      setTruckCapacity(`${capacityValue}%`);
-      
-      // Update truck type based on apartment size
-      if (parseInt(apartmentSize) <= 2) {
-        setTruckType('משאית 7 טון');
-      } else {
-        setTruckType('משאית 12 טון');
-      }
+      if (size === 'small') newCapacity = 30;
+      else if (size === 'medium') newCapacity = 60;
+      else if (size === 'large') newCapacity = 90;
     } else if (movingType === 'office') {
-      const officeMultipliers: Record<string, number> = {
-        small: 1000,
-        medium: 2000,
-        large: 3500,
-        xl: 5000
-      };
-      
-      basePrice += officeMultipliers[officeSize];
-      maxPrice += officeMultipliers[officeSize] + 1000;
-      
-      // Update truck capacity and type
-      if (officeSize === 'small') {
-        setTruckCapacity('40%');
-        setTruckType('משאית 7 טון');
-      } else if (officeSize === 'medium') {
-        setTruckCapacity('60%');
-        setTruckType('משאית 12 טון');
-      } else {
-        setTruckCapacity('85%');
-        setTruckType('משאית 12 טון');
-      }
-    } else if (movingType === 'item') {
-      const itemPrices: Record<string, number> = {
-        fridge: 400,
-        'washing-machine': 350,
-        sofa: 500,
-        bed: 450,
-        piano: 1200,
-        cabinet: 550,
-        other: 500
-      };
-      
-      basePrice = itemPrices[itemType];
-      maxPrice = basePrice + 200;
-      
-      // Update truck capacity and type
-      setTruckCapacity('15%');
-      
-      if (itemType === 'piano') {
-        setTruckType('משאית 7 טון');
-      } else {
-        setTruckType('טנדר');
-      }
+      if (size === 'small') newCapacity = 40;
+      else if (size === 'medium') newCapacity = 70;
+      else if (size === 'large') newCapacity = 95;
+    } else if (movingType === 'singleItem') {
+      newCapacity = 15;
     }
     
-    // Distance calculation
-    basePrice += distance * 2;
-    maxPrice += distance * 3;
-    
-    // Additional services
-    if (additionalServices.includes('packing')) {
-      basePrice += 500;
-      maxPrice += 800;
+    // Add more if packing services selected
+    if (additionalServices && additionalServices.includes('packing')) {
+      newCapacity = Math.min(newCapacity + 15, 100);
     }
     
-    if (additionalServices.includes('disassembly')) {
-      basePrice += 300;
-      maxPrice += 500;
+    setCapacity(newCapacity);
+  }, [watchedValues]);
+  
+  // Calculate estimated price
+  useEffect(() => {
+    const { movingType, size, floor, distance, additionalServices } = watchedValues;
+    
+    if (!movingType || !distance) {
+      setEstimatedPrice(null);
+      return;
     }
     
-    if (additionalServices.includes('storage')) {
-      basePrice += 700;
-      maxPrice += 1200;
+    let basePrice = 0;
+    
+    // Base price by moving type and size
+    if (movingType === 'apartment') {
+      if (size === 'small') basePrice = 1500;
+      else if (size === 'medium') basePrice = 2500;
+      else if (size === 'large') basePrice = 3500;
+    } else if (movingType === 'office') {
+      if (size === 'small') basePrice = 2000;
+      else if (size === 'medium') basePrice = 3500;
+      else if (size === 'large') basePrice = 5000;
+    } else if (movingType === 'singleItem') {
+      basePrice = 600;
+    } else if (movingType === 'storage') {
+      basePrice = 800;
     }
     
-    if (additionalServices.includes('insurance')) {
-      basePrice += 250;
-      maxPrice += 400;
+    // Add distance cost
+    const distanceCost = Math.max(0, distance - 15) * 10; // First 15km free, then 10 per km
+    
+    // Add floor cost
+    let floorCost = 0;
+    if (floor && floor > 0) {
+      if (floor <= 2) floorCost = floor * 100;
+      else floorCost = 200 + (floor - 2) * 150; // 100 per floor up to 2nd floor, then 150 per floor
     }
     
-    setEstimatedPrice(`₪${basePrice.toLocaleString()} - ₪${maxPrice.toLocaleString()}`);
+    // Add costs for additional services
+    let additionalCost = 0;
+    if (additionalServices && additionalServices.length > 0) {
+      if (additionalServices.includes('packing')) additionalCost += 500;
+      if (additionalServices.includes('disassembly')) additionalCost += 300;
+      if (additionalServices.includes('storage')) additionalCost += 800;
+      if (additionalServices.includes('insurance')) additionalCost += 200;
+    }
+    
+    // Calculate total
+    const total = basePrice + distanceCost + floorCost + additionalCost;
+    setEstimatedPrice(total);
+  }, [watchedValues]);
+  
+  // Handle service checkboxes
+  const handleServiceChange = (service: string) => {
+    const currentServices = form.getValues('additionalServices') || [];
+    
+    if (currentServices.includes(service)) {
+      setValue(
+        'additionalServices',
+        currentServices.filter(s => s !== service)
+      );
+    } else {
+      setValue('additionalServices', [...currentServices, service]);
+    }
   };
-
-  const handleGetQuote = async () => {
-    try {
-      const quoteData = {
-        movingType,
-        size: movingType === 'apartment' 
-          ? apartmentSize 
-          : movingType === 'office' 
-            ? officeSize 
-            : itemType,
-        floor,
-        distance,
-        additionalServices,
-        estimatedPrice
-      };
-      
-      await apiRequest('POST', '/api/price-quotes', quoteData);
-      
-      toast({
-        title: t('common.success'),
-        description: t('contact.form.success'),
+  
+  // Save quote to server
+  const saveMutation = useMutation({
+    mutationFn: async (data: PriceCalculatorValues & { estimatedPrice: string }) => {
+      return await apiRequest('/api/price-quotes', {
+        method: 'POST',
+        body: JSON.stringify(data),
       });
-      
-      // Scroll to contact section
-      document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' });
-    } catch (error) {
+    },
+    onSuccess: () => {
+      toast({
+        title: 'הצעת המחיר נשמרה בהצלחה',
+        description: 'נשלח אליך אימייל עם פרטי ההצעה',
+        variant: 'default',
+      });
+    },
+    onError: () => {
       toast({
         title: t('common.error'),
-        description: error instanceof Error ? error.message : String(error),
+        description: 'לא ניתן היה לשמור את הצעת המחיר. אנא נסה שנית.',
         variant: 'destructive',
+      });
+    },
+  });
+  
+  const handleSaveQuote = () => {
+    if (estimatedPrice) {
+      saveMutation.mutate({
+        ...form.getValues(),
+        estimatedPrice: estimatedPrice.toString(),
       });
     }
   };
-
+  
   return (
-    <section id="calculator" className="py-20 bg-light relative overflow-hidden">
-      <div className="absolute top-0 right-0 w-full h-64 bg-gradient-to-b from-white to-transparent"></div>
-      
-      <div className="container mx-auto px-4 relative z-10">
-        <motion.div 
-          ref={ref}
-          variants={variants}
-          initial="hidden"
-          animate={controls}
-          className="text-center mb-12"
-        >
+    <section id="calculator" className="py-20 bg-gradient-to-b from-white to-light">
+      <div className="container mx-auto px-4">
+        <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-heebo font-bold text-secondary mb-4">
             {t('calculator.title')}
           </h2>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
             {t('calculator.subtitle')}
           </p>
-        </motion.div>
+        </div>
         
-        <motion.div 
-          variants={variants}
-          initial="hidden"
-          animate={controls}
-          className="bg-white rounded-xl shadow-xl overflow-hidden"
-        >
-          <div className="grid grid-cols-1 lg:grid-cols-2">
-            {/* Calculator Form */}
-            <div className="p-8">
-              <h3 className="text-2xl font-heebo font-bold text-secondary mb-6">{t('calculator.details')}</h3>
-              
-              <form className="space-y-6">
-                {/* Moving Type */}
-                <div>
-                  <label className="block text-gray-700 font-bold mb-3">{t('calculator.movingType')}</label>
-                  <div className="grid grid-cols-3 gap-4">
-                    <label 
-                      className={`relative bg-light rounded-lg p-4 text-center cursor-pointer transition-all border-2 ${
-                        movingType === 'apartment' ? 'border-secondary' : 'border-transparent hover:border-secondary'
-                      }`}
-                      onClick={() => setMovingType('apartment')}
-                    >
-                      <input 
-                        type="radio" 
-                        name="moving-type" 
-                        value="apartment" 
-                        className="absolute opacity-0" 
-                        checked={movingType === 'apartment'}
-                        onChange={() => setMovingType('apartment')}
-                      />
-                      <i className={`fas fa-home text-2xl mb-2 ${movingType === 'apartment' ? 'text-primary' : ''}`}></i>
-                      <span className="block text-sm">{t('services.apartment.title')}</span>
-                    </label>
-                    
-                    <label 
-                      className={`relative bg-light rounded-lg p-4 text-center cursor-pointer transition-all border-2 ${
-                        movingType === 'office' ? 'border-secondary' : 'border-transparent hover:border-secondary'
-                      }`}
-                      onClick={() => setMovingType('office')}
-                    >
-                      <input 
-                        type="radio" 
-                        name="moving-type" 
-                        value="office" 
-                        className="absolute opacity-0"
-                        checked={movingType === 'office'}
-                        onChange={() => setMovingType('office')}
-                      />
-                      <i className={`fas fa-building text-2xl mb-2 ${movingType === 'office' ? 'text-primary' : ''}`}></i>
-                      <span className="block text-sm">{t('services.office.title')}</span>
-                    </label>
-                    
-                    <label 
-                      className={`relative bg-light rounded-lg p-4 text-center cursor-pointer transition-all border-2 ${
-                        movingType === 'item' ? 'border-secondary' : 'border-transparent hover:border-secondary'
-                      }`}
-                      onClick={() => setMovingType('item')}
-                    >
-                      <input 
-                        type="radio" 
-                        name="moving-type" 
-                        value="item" 
-                        className="absolute opacity-0"
-                        checked={movingType === 'item'}
-                        onChange={() => setMovingType('item')}
-                      />
-                      <i className={`fas fa-couch text-2xl mb-2 ${movingType === 'item' ? 'text-primary' : ''}`}></i>
-                      <span className="block text-sm">{t('services.singleItem.title')}</span>
-                    </label>
-                  </div>
-                </div>
-                
-                {/* Apartment Size (shows only if apartment is selected) */}
-                {movingType === 'apartment' && (
-                  <div>
-                    <label className="block text-gray-700 font-bold mb-3">{t('calculator.apartmentSize')}</label>
-                    <div className="grid grid-cols-4 gap-4 mb-4">
-                      {['1', '2', '3', '4'].map((size) => (
-                        <label 
-                          key={size}
-                          className={`relative bg-light rounded-lg p-3 text-center cursor-pointer transition-all border-2 ${
-                            apartmentSize === size ? 'border-secondary' : 'border-transparent hover:border-secondary'
-                          }`}
-                          onClick={() => setApartmentSize(size)}
-                        >
-                          <input 
-                            type="radio" 
-                            name="apartment-size" 
-                            value={size} 
-                            className="absolute opacity-0"
-                            checked={apartmentSize === size}
-                            onChange={() => setApartmentSize(size)}
-                          />
-                          <span className="block text-lg font-bold">{size === '4' ? '4+' : size}</span>
-                          <span className="block text-xs">חדרים</span>
-                        </label>
-                      ))}
+        <div className="grid md:grid-cols-2 gap-10 items-start">
+          {/* Calculator Form */}
+          <motion.div
+            initial={{ opacity: 0, x: -50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6 }}
+            className="bg-white rounded-xl shadow-lg p-8"
+          >
+            <h3 className="text-2xl font-heebo font-bold mb-6 text-secondary">
+              {t('calculator.details')}
+            </h3>
+            
+            <form className="space-y-6">
+              {/* Moving Type */}
+              <div className="space-y-2">
+                <label className="block font-medium">
+                  {t('calculator.movingType')} <span className="text-primary">*</span>
+                </label>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  <label className={`relative border rounded-lg p-3 cursor-pointer transition-colors ${
+                    watchedValues.movingType === 'apartment' ? 'bg-primary/10 border-primary' : 'hover:bg-light'
+                  }`}>
+                    <input
+                      type="radio"
+                      className="sr-only"
+                      value="apartment"
+                      {...form.register('movingType')}
+                    />
+                    <div className="text-center">
+                      <i className="fas fa-home text-2xl mb-2 text-secondary"></i>
+                      <div className="text-sm">הובלת דירה</div>
                     </div>
-                    
-                    <div className="bg-light rounded-lg p-4">
-                      <label className="block text-gray-700 font-bold mb-2">{t('calculator.floor')}</label>
-                      <div className="flex items-center">
-                        <button 
-                          type="button" 
-                          className="bg-white text-primary w-10 h-10 rounded-lg shadow flex items-center justify-center"
-                          onClick={() => floor > 0 && setFloor(floor - 1)}
-                        >
-                          <i className="fas fa-minus"></i>
-                        </button>
-                        <div className="flex-1 text-center">
-                          <span className="text-xl font-bold">{floor}</span>
-                        </div>
-                        <button 
-                          type="button" 
-                          className="bg-white text-primary w-10 h-10 rounded-lg shadow flex items-center justify-center"
-                          onClick={() => setFloor(floor + 1)}
-                        >
-                          <i className="fas fa-plus"></i>
-                        </button>
+                    {watchedValues.movingType === 'apartment' && (
+                      <div className="absolute -top-2 -right-2 bg-primary text-white rounded-full p-1 w-6 h-6 flex items-center justify-center">
+                        <i className="fas fa-check text-xs"></i>
                       </div>
+                    )}
+                  </label>
+                  
+                  <label className={`relative border rounded-lg p-3 cursor-pointer transition-colors ${
+                    watchedValues.movingType === 'office' ? 'bg-primary/10 border-primary' : 'hover:bg-light'
+                  }`}>
+                    <input
+                      type="radio"
+                      className="sr-only"
+                      value="office"
+                      {...form.register('movingType')}
+                    />
+                    <div className="text-center">
+                      <i className="fas fa-building text-2xl mb-2 text-secondary"></i>
+                      <div className="text-sm">הובלת משרד</div>
+                    </div>
+                    {watchedValues.movingType === 'office' && (
+                      <div className="absolute -top-2 -right-2 bg-primary text-white rounded-full p-1 w-6 h-6 flex items-center justify-center">
+                        <i className="fas fa-check text-xs"></i>
+                      </div>
+                    )}
+                  </label>
+                  
+                  <label className={`relative border rounded-lg p-3 cursor-pointer transition-colors ${
+                    watchedValues.movingType === 'singleItem' ? 'bg-primary/10 border-primary' : 'hover:bg-light'
+                  }`}>
+                    <input
+                      type="radio"
+                      className="sr-only"
+                      value="singleItem"
+                      {...form.register('movingType')}
+                    />
+                    <div className="text-center">
+                      <i className="fas fa-couch text-2xl mb-2 text-secondary"></i>
+                      <div className="text-sm">פריט בודד</div>
+                    </div>
+                    {watchedValues.movingType === 'singleItem' && (
+                      <div className="absolute -top-2 -right-2 bg-primary text-white rounded-full p-1 w-6 h-6 flex items-center justify-center">
+                        <i className="fas fa-check text-xs"></i>
+                      </div>
+                    )}
+                  </label>
+                  
+                  <label className={`relative border rounded-lg p-3 cursor-pointer transition-colors ${
+                    watchedValues.movingType === 'storage' ? 'bg-primary/10 border-primary' : 'hover:bg-light'
+                  }`}>
+                    <input
+                      type="radio"
+                      className="sr-only"
+                      value="storage"
+                      {...form.register('movingType')}
+                    />
+                    <div className="text-center">
+                      <i className="fas fa-warehouse text-2xl mb-2 text-secondary"></i>
+                      <div className="text-sm">אחסון</div>
+                    </div>
+                    {watchedValues.movingType === 'storage' && (
+                      <div className="absolute -top-2 -right-2 bg-primary text-white rounded-full p-1 w-6 h-6 flex items-center justify-center">
+                        <i className="fas fa-check text-xs"></i>
+                      </div>
+                    )}
+                  </label>
+                </div>
+                {form.formState.errors.movingType && (
+                  <p className="text-sm text-primary">{form.formState.errors.movingType.message}</p>
+                )}
+              </div>
+              
+              {/* Size - only show for apartment or office */}
+              {(watchedValues.movingType === 'apartment' || watchedValues.movingType === 'office') && (
+                <div className="space-y-2">
+                  <label className="block font-medium">
+                    {watchedValues.movingType === 'apartment' ? t('calculator.apartmentSize') : t('calculator.officeSize')}
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <label className={`text-center border rounded-lg p-2 cursor-pointer transition-colors ${
+                      watchedValues.size === 'small' ? 'bg-primary/10 border-primary' : 'hover:bg-light'
+                    }`}>
+                      <input
+                        type="radio"
+                        className="sr-only"
+                        value="small"
+                        {...form.register('size')}
+                      />
+                      <span>קטן (1-2 חדרים)</span>
+                    </label>
+                    
+                    <label className={`text-center border rounded-lg p-2 cursor-pointer transition-colors ${
+                      watchedValues.size === 'medium' ? 'bg-primary/10 border-primary' : 'hover:bg-light'
+                    }`}>
+                      <input
+                        type="radio"
+                        className="sr-only"
+                        value="medium"
+                        {...form.register('size')}
+                      />
+                      <span>בינוני (3-4 חדרים)</span>
+                    </label>
+                    
+                    <label className={`text-center border rounded-lg p-2 cursor-pointer transition-colors ${
+                      watchedValues.size === 'large' ? 'bg-primary/10 border-primary' : 'hover:bg-light'
+                    }`}>
+                      <input
+                        type="radio"
+                        className="sr-only"
+                        value="large"
+                        {...form.register('size')}
+                      />
+                      <span>גדול (5+ חדרים)</span>
+                    </label>
+                  </div>
+                </div>
+              )}
+              
+              {/* Floor */}
+              <div className="space-y-2">
+                <label htmlFor="floor" className="block font-medium">
+                  {t('calculator.floor')}
+                </label>
+                <div className="flex items-center space-x-3 space-x-reverse">
+                  <input
+                    id="floor"
+                    type="number"
+                    min="0"
+                    max="50"
+                    className="w-20 p-2 border rounded-lg"
+                    {...form.register('floor')}
+                  />
+                  <div>
+                    <div className="text-sm text-gray-600">
+                      {watchedValues.floor === 0 && 'קרקע'}
+                      {watchedValues.floor === 1 && 'קומה ראשונה'}
+                      {watchedValues.floor === 2 && 'קומה שנייה'}
+                      {watchedValues.floor === 3 && 'קומה שלישית'}
+                      {watchedValues.floor && watchedValues.floor > 3 && `קומה ${watchedValues.floor}`}
+                    </div>
+                    <div className="text-xs text-secondary">
+                      {watchedValues.floor && watchedValues.floor > 0 && 'האם יש מעלית שירות?'}
                     </div>
                   </div>
-                )}
-                
-                {/* Office Options */}
-                {movingType === 'office' && (
-                  <div>
-                    <label className="block text-gray-700 font-bold mb-3">{t('calculator.officeSize')}</label>
-                    <select 
-                      className="w-full bg-light border-2 border-gray-200 rounded-lg px-4 py-3 focus:outline-none focus:border-secondary transition-colors"
-                      value={officeSize}
-                      onChange={(e) => setOfficeSize(e.target.value)}
-                    >
-                      <option value="small">קטן (עד 50 מ"ר)</option>
-                      <option value="medium">בינוני (50-100 מ"ר)</option>
-                      <option value="large">גדול (100-200 מ"ר)</option>
-                      <option value="xl">גדול מאוד (200+ מ"ר)</option>
-                    </select>
-                  </div>
-                )}
-                
-                {/* Single Item Options */}
-                {movingType === 'item' && (
-                  <div>
-                    <label className="block text-gray-700 font-bold mb-3">{t('calculator.itemType')}</label>
-                    <select 
-                      className="w-full bg-light border-2 border-gray-200 rounded-lg px-4 py-3 focus:outline-none focus:border-secondary transition-colors"
-                      value={itemType}
-                      onChange={(e) => setItemType(e.target.value)}
-                    >
-                      <option value="fridge">מקרר</option>
-                      <option value="washing-machine">מכונת כביסה</option>
-                      <option value="sofa">ספה</option>
-                      <option value="bed">מיטה</option>
-                      <option value="piano">פסנתר</option>
-                      <option value="cabinet">ארון</option>
-                      <option value="other">אחר</option>
-                    </select>
-                  </div>
-                )}
-                
-                {/* Additional Services */}
-                <div>
-                  <label className="block text-gray-700 font-bold mb-3">{t('calculator.additionalServices')}</label>
-                  <div className="space-y-3">
-                    {[
-                      { id: 'packing', label: t('calculator.services.packing'), icon: 'box' },
-                      { id: 'disassembly', label: t('calculator.services.disassembly'), icon: 'tools' },
-                      { id: 'storage', label: t('calculator.services.storage'), icon: 'warehouse' },
-                      { id: 'insurance', label: t('calculator.services.insurance'), icon: 'shield-alt' }
-                    ].map((service) => (
-                      <label key={service.id} className="flex items-center cursor-pointer group">
-                        <input 
-                          type="checkbox" 
-                          name={`service-${service.id}`} 
-                          className="form-checkbox hidden"
-                          checked={additionalServices.includes(service.id)}
-                          onChange={() => toggleAdditionalService(service.id)}
-                        />
-                        <div 
-                          className={`w-6 h-6 border-2 rounded mr-3 flex items-center justify-center transition-colors ${
-                            additionalServices.includes(service.id) 
-                              ? 'bg-primary border-primary' 
-                              : 'border-gray-300 group-hover:border-secondary'
-                          }`}
-                        >
-                          <i 
-                            className={`fas fa-check text-white text-sm ${
-                              additionalServices.includes(service.id) ? 'opacity-100' : 'opacity-0'
-                            }`}
-                          ></i>
-                        </div>
-                        <span>{service.label}</span>
-                      </label>
-                    ))}
-                  </div>
                 </div>
-                
-                {/* Distance */}
-                <div>
-                  <label className="block text-gray-700 font-bold mb-3">{t('calculator.distance')}</label>
-                  <input 
-                    type="range" 
-                    min="1" 
-                    max="1000" 
-                    value={distance}
-                    onChange={(e) => setDistance(parseInt(e.target.value))}
-                    className="w-full"
-                  />
-                  <div className="flex justify-between">
-                    <span>1</span>
-                    <span className="font-bold">{distance} ק"מ</span>
-                    <span>1000+</span>
-                  </div>
-                </div>
-              </form>
+                {form.formState.errors.floor && (
+                  <p className="text-sm text-primary">{form.formState.errors.floor.message}</p>
+                )}
+              </div>
               
-              <div className="mt-8">
-                <div className="flex justify-between items-center mb-4">
-                  <span className="text-xl font-bold">{t('calculator.estimation')}</span>
-                  <span className="text-2xl font-bold text-primary">{estimatedPrice}</span>
+              {/* Additional Services */}
+              <div className="space-y-2">
+                <label className="block font-medium">
+                  {t('calculator.additionalServices')}
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <label className={`flex items-center border rounded-lg p-3 cursor-pointer transition-colors ${
+                    watchedValues.additionalServices?.includes('packing') ? 'bg-primary/10 border-primary' : 'hover:bg-light'
+                  }`}>
+                    <input
+                      type="checkbox"
+                      className="sr-only"
+                      checked={watchedValues.additionalServices?.includes('packing') || false}
+                      onChange={() => handleServiceChange('packing')}
+                    />
+                    <div className="flex items-center">
+                      <div className={`w-5 h-5 border rounded flex items-center justify-center mr-2 ${
+                        watchedValues.additionalServices?.includes('packing') ? 'bg-primary border-primary text-white' : 'border-gray-400'
+                      }`}>
+                        {watchedValues.additionalServices?.includes('packing') && (
+                          <i className="fas fa-check text-xs"></i>
+                        )}
+                      </div>
+                      <span>{t('calculator.services.packing')}</span>
+                    </div>
+                  </label>
+                  
+                  <label className={`flex items-center border rounded-lg p-3 cursor-pointer transition-colors ${
+                    watchedValues.additionalServices?.includes('disassembly') ? 'bg-primary/10 border-primary' : 'hover:bg-light'
+                  }`}>
+                    <input
+                      type="checkbox"
+                      className="sr-only"
+                      checked={watchedValues.additionalServices?.includes('disassembly') || false}
+                      onChange={() => handleServiceChange('disassembly')}
+                    />
+                    <div className="flex items-center">
+                      <div className={`w-5 h-5 border rounded flex items-center justify-center mr-2 ${
+                        watchedValues.additionalServices?.includes('disassembly') ? 'bg-primary border-primary text-white' : 'border-gray-400'
+                      }`}>
+                        {watchedValues.additionalServices?.includes('disassembly') && (
+                          <i className="fas fa-check text-xs"></i>
+                        )}
+                      </div>
+                      <span>{t('calculator.services.disassembly')}</span>
+                    </div>
+                  </label>
+                  
+                  <label className={`flex items-center border rounded-lg p-3 cursor-pointer transition-colors ${
+                    watchedValues.additionalServices?.includes('storage') ? 'bg-primary/10 border-primary' : 'hover:bg-light'
+                  }`}>
+                    <input
+                      type="checkbox"
+                      className="sr-only"
+                      checked={watchedValues.additionalServices?.includes('storage') || false}
+                      onChange={() => handleServiceChange('storage')}
+                    />
+                    <div className="flex items-center">
+                      <div className={`w-5 h-5 border rounded flex items-center justify-center mr-2 ${
+                        watchedValues.additionalServices?.includes('storage') ? 'bg-primary border-primary text-white' : 'border-gray-400'
+                      }`}>
+                        {watchedValues.additionalServices?.includes('storage') && (
+                          <i className="fas fa-check text-xs"></i>
+                        )}
+                      </div>
+                      <span>{t('calculator.services.storage')}</span>
+                    </div>
+                  </label>
+                  
+                  <label className={`flex items-center border rounded-lg p-3 cursor-pointer transition-colors ${
+                    watchedValues.additionalServices?.includes('insurance') ? 'bg-primary/10 border-primary' : 'hover:bg-light'
+                  }`}>
+                    <input
+                      type="checkbox"
+                      className="sr-only"
+                      checked={watchedValues.additionalServices?.includes('insurance') || false}
+                      onChange={() => handleServiceChange('insurance')}
+                    />
+                    <div className="flex items-center">
+                      <div className={`w-5 h-5 border rounded flex items-center justify-center mr-2 ${
+                        watchedValues.additionalServices?.includes('insurance') ? 'bg-primary border-primary text-white' : 'border-gray-400'
+                      }`}>
+                        {watchedValues.additionalServices?.includes('insurance') && (
+                          <i className="fas fa-check text-xs"></i>
+                        )}
+                      </div>
+                      <span>{t('calculator.services.insurance')}</span>
+                    </div>
+                  </label>
                 </div>
-                
-                <div className="text-sm text-gray-500 mb-6">
-                  {t('calculator.disclaimer')}
+              </div>
+              
+              {/* Distance */}
+              <div className="space-y-2">
+                <label htmlFor="distance" className="block font-medium">
+                  {t('calculator.distance')} <span className="text-primary">*</span>
+                </label>
+                <div>
+                  <input
+                    id="distance"
+                    type="range"
+                    min="1"
+                    max="100"
+                    step="1"
+                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                    {...form.register('distance')}
+                  />
+                  <div className="flex justify-between text-xs text-gray-600 mt-1">
+                    <span>1 ק"מ</span>
+                    <span>{watchedValues.distance} ק"מ</span>
+                    <span>100 ק"מ</span>
+                  </div>
                 </div>
+                {form.formState.errors.distance && (
+                  <p className="text-sm text-primary">{form.formState.errors.distance.message}</p>
+                )}
+              </div>
+              
+              {/* Price Estimation */}
+              <div className="bg-secondary text-white p-6 rounded-xl mt-8">
+                <div className="flex justify-between items-center mb-2">
+                  <h4 className="text-xl font-bold">{t('calculator.estimation')}</h4>
+                  <div className="text-2xl font-bold">
+                    {estimatedPrice ? `₪${estimatedPrice.toLocaleString()}` : '---'}
+                  </div>
+                </div>
+                <div className="text-sm opacity-70">{t('calculator.disclaimer')}</div>
                 
-                <button 
-                  type="button" 
-                  className="w-full bg-primary text-white rounded-lg py-4 px-6 text-lg font-bold hover:bg-opacity-90 transition-colors shadow-lg flex items-center justify-center"
-                  onClick={handleGetQuote}
+                <button
+                  type="button"
+                  className="mt-4 w-full bg-primary text-white py-3 rounded-lg font-bold hover:bg-primary/90 transition-colors flex items-center justify-center space-x-2 space-x-reverse disabled:opacity-70"
+                  disabled={!estimatedPrice || saveMutation.isPending}
+                  onClick={handleSaveQuote}
                 >
-                  <span>{t('calculator.getQuote')}</span>
-                  <i className="fas fa-arrow-left mr-2"></i>
+                  {saveMutation.isPending ? (
+                    <>
+                      <i className="fas fa-spinner fa-spin"></i>
+                      <span>{t('common.loading')}</span>
+                    </>
+                  ) : (
+                    <>
+                      <i className="fas fa-file-invoice-dollar"></i>
+                      <span>{t('calculator.getQuote')}</span>
+                    </>
+                  )}
                 </button>
               </div>
+            </form>
+          </motion.div>
+          
+          {/* 3D Truck Visualization */}
+          <motion.div
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+            className="bg-white rounded-xl shadow-lg overflow-hidden flex flex-col"
+          >
+            <div className="p-6 border-b">
+              <h3 className="text-2xl font-heebo font-bold text-secondary">
+                {t('calculator.truck')}
+              </h3>
             </div>
             
-            {/* 3D Truck Visualization */}
-            <div className="bg-gray-900 relative">
-              <div className="w-full" style={{ minHeight: '600px' }}>
-                <TruckModel capacity={parseFloat(truckCapacity)} />
+            <div className="flex-1" style={{ minHeight: '400px' }}>
+              <TruckModel capacity={capacity} />
+            </div>
+            
+            <div className="p-6 bg-light border-t">
+              <div className="mb-2">
+                <div className="font-medium mb-1">{t('calculator.capacity')}</div>
+                <div className="w-full bg-gray-200 rounded-full h-4">
+                  <div
+                    className="bg-primary h-4 rounded-full"
+                    style={{ width: `${capacity}%` }}
+                  ></div>
+                </div>
               </div>
-              <div className="absolute bottom-0 left-0 w-full bg-black bg-opacity-70 text-white p-4 flex justify-between items-center">
-                <div>
-                  <span className="font-bold">{t('calculator.truck')} </span>
-                  <span>{truckType}</span>
-                </div>
-                <div>
-                  <span className="font-bold">{t('calculator.capacity')} </span>
-                  <span>{truckCapacity}</span>
-                </div>
+              <div className="flex justify-between text-sm text-gray-600">
+                <span>0%</span>
+                <span>{capacity}%</span>
+                <span>100%</span>
               </div>
             </div>
-          </div>
-        </motion.div>
+          </motion.div>
+        </div>
       </div>
     </section>
   );
