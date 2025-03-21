@@ -13,7 +13,7 @@ export default function App({ Component, pageProps }: any) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-black">
         <video
-          src="/or4moving.mp4"
+          src="/or4moving.mp4" // Ensure this file is in the public folder
           autoPlay
           loop
           muted
