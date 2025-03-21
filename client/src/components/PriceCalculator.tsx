@@ -390,10 +390,10 @@ const PriceCalculator = () => {
                       {watchedValues.floor === 1 && 'קומה ראשונה'}
                       {watchedValues.floor === 2 && 'קומה שנייה'}
                       {watchedValues.floor === 3 && 'קומה שלישית'}
-                      {watchedValues.floor !== undefined && watchedValues.floor > 3 && `קומה ${watchedValues.floor}`}
+                      {watchedValues.floor !== undefined && watchedValues.floor !== null && watchedValues.floor > 3 && `קומה ${watchedValues.floor}`}
                     </div>
                     <div className="text-xs text-primary mt-1">
-                      {watchedValues.floor !== undefined && watchedValues.floor > 0 && 'האם יש מעלית שירות?'}
+                      {watchedValues.floor !== undefined && watchedValues.floor !== null && watchedValues.floor > 0 && 'האם יש מעלית שירות?'}
                     </div>
                   </div>
                 </div>
@@ -658,40 +658,7 @@ const PriceCalculator = () => {
         </div>
       </div>
       
-      {/* Custom CSS for range input */}
-      <style jsx global>{`
-        input[type=range]::-webkit-slider-thumb {
-          appearance: none;
-          width: 18px;
-          height: 18px;
-          border-radius: 50%;
-          background: #2563EB;
-          box-shadow: 0 0 10px rgba(37, 99, 235, 0.8);
-          cursor: pointer;
-          transition: all 0.3s;
-        }
-        
-        input[type=range]::-webkit-slider-thumb:hover {
-          background: #3B82F6;
-          box-shadow: 0 0 15px rgba(59, 130, 246, 0.9);
-        }
-        
-        input[type=range]::-moz-range-thumb {
-          width: 18px;
-          height: 18px;
-          border-radius: 50%;
-          background: #2563EB;
-          box-shadow: 0 0 10px rgba(37, 99, 235, 0.8);
-          cursor: pointer;
-          border: none;
-          transition: all 0.3s;
-        }
-        
-        input[type=range]::-moz-range-thumb:hover {
-          background: #3B82F6;
-          box-shadow: 0 0 15px rgba(59, 130, 246, 0.9);
-        }
-      `}</style>
+      {/* Custom CSS for range input is in index.css */}
     </section>
   );
 };

@@ -1,182 +1,226 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '@/context/LanguageContext';
 
 const FloatingSocialButtons = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const buttonsRef = useRef<HTMLDivElement>(null);
   const { t } = useLanguage();
   
-  // Contact information
-  const contactInfo = {
-    phone: '0543806524',
-    whatsapp: '972543806524',
-    email: 'or4moving@gmail.com',
-    facebook: 'https://www.facebook.com/profile.php?id=100055173724987',
-    instagram: 'https://www.instagram.com/or4moving/'
+  const socialLinks = [
+    {
+      name: 'WhatsApp',
+      icon: 'fab fa-whatsapp',
+      bgColor: 'bg-[#25D366]',
+      link: 'https://wa.me/9720545555555',
+      tooltip: t('social.whatsapp'),
+    },
+    {
+      name: 'Phone',
+      icon: 'fas fa-phone-alt',
+      bgColor: 'bg-primary',
+      link: 'tel:0545555555',
+      tooltip: t('social.phone'),
+    },
+    {
+      name: 'Facebook',
+      icon: 'fab fa-facebook-f',
+      bgColor: 'bg-[#1877F2]',
+      link: 'https://facebook.com',
+      tooltip: t('social.facebook'),
+    },
+    {
+      name: 'Instagram',
+      icon: 'fab fa-instagram',
+      bgColor: 'bg-gradient-to-tr from-purple-500 via-pink-500 to-yellow-500',
+      link: 'https://instagram.com',
+      tooltip: t('social.instagram'),
+    },
+    {
+      name: 'Email',
+      icon: 'fas fa-envelope',
+      bgColor: 'bg-gold',
+      link: 'mailto:info@lehovalot.com',
+      tooltip: t('social.email'),
+    },
+  ];
+  
+  // Close when clicking outside of the buttons
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (buttonsRef.current && !buttonsRef.current.contains(event.target as Node) && isOpen) {
+        setIsOpen(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen]);
+  
+  const toggleOpen = () => {
+    setIsOpen(!isOpen);
   };
   
-  // Pre-composed WhatsApp message
-  const whatsappMessage = encodeURIComponent('שלום, אשמח לקבל פרטים נוספים על שירותי ההובלה שלכם');
-  
-  // Variants for animation
+  // Button animations
   const containerVariants = {
-    open: {
+    open: { transition: { staggerChildren: 0.07, delayChildren: 0.05 } },
+    closed: { transition: { staggerChildren: 0.05, staggerDirection: -1 } }
+  };
+  
+  const buttonVariants = {
+    open: { 
+      y: 0,
+      scale: 1,
+      opacity: 1,
       transition: {
-        staggerChildren: 0.1,
-        delayChildren: 0.2
+        type: "spring",
+        stiffness: 300,
+        damping: 15
       }
     },
-    closed: {
+    closed: { 
+      y: 20,
+      scale: 0.8,
+      opacity: 0,
       transition: {
-        staggerChildren: 0.05,
-        staggerDirection: -1
+        type: "spring",
+        stiffness: 300,
+        damping: 20 
       }
     }
   };
   
-  const buttonVariants = {
-    open: (i: number) => ({
-      y: -i * 60,
-      opacity: 1,
-      transition: {
-        y: { type: "spring", stiffness: 300, damping: 15 },
-        opacity: { duration: 0.2 }
-      }
-    }),
-    closed: {
-      y: 0,
-      opacity: 0,
-      transition: {
-        y: { type: "spring", stiffness: 300, damping: 20 },
-        opacity: { duration: 0.2 }
+  const toggleButtonVariants = {
+    open: { 
+      rotate: 225,
+      backgroundColor: '#ef4444',
+      boxShadow: '0 0 15px rgba(239, 68, 68, 0.6)'
+    },
+    closed: { 
+      rotate: 0,
+      backgroundColor: '#2563EB',
+      boxShadow: '0 0 15px rgba(37, 99, 235, 0.6)'
+    }
+  };
+  
+  const tooltipVariants = {
+    hidden: { 
+      opacity: 0, 
+      x: 20,
+      scale: 0.9
+    },
+    visible: { 
+      opacity: 1, 
+      x: 0,
+      scale: 1,
+      transition: { 
+        duration: 0.2 
       }
     }
   };
   
   return (
-    <div className="fixed bottom-8 right-8 z-50">
+    <div 
+      ref={buttonsRef}
+      className="fixed bottom-6 right-6 z-50"
+    >
       <motion.div
-        initial="closed"
+        initial={false}
         animate={isOpen ? "open" : "closed"}
         variants={containerVariants}
-        className="relative"
+        className="flex flex-col-reverse items-center gap-4 mb-4"
       >
-        {/* Main Button */}
-        <motion.button
-          onClick={() => setIsOpen(!isOpen)}
-          className="relative z-10 w-16 h-16 rounded-full bg-primary cosmic-glow btn-3d flex items-center justify-center text-white text-2xl"
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-        >
-          <i className={`fas ${isOpen ? 'fa-times' : 'fa-comments'}`}></i>
-        </motion.button>
-        
-        {/* Phone Button */}
         <AnimatePresence>
           {isOpen && (
-            <motion.a
-              href={`tel:${contactInfo.phone}`}
-              custom={1}
-              variants={buttonVariants}
-              initial="closed"
-              animate="open"
-              exit="closed"
-              className="absolute bottom-0 right-0 w-14 h-14 rounded-full bg-green-600 text-white flex items-center justify-center text-xl"
-              whileHover={{ scale: 1.1, boxShadow: "0 0 15px rgba(21, 128, 61, 0.6)" }}
-              whileTap={{ scale: 0.9 }}
-              title={t('contact.callUs')}
-            >
-              <i className="fas fa-phone"></i>
-            </motion.a>
-          )}
-        </AnimatePresence>
-        
-        {/* WhatsApp Button */}
-        <AnimatePresence>
-          {isOpen && (
-            <motion.a
-              href={`https://wa.me/${contactInfo.whatsapp}?text=${whatsappMessage}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              custom={2}
-              variants={buttonVariants}
-              initial="closed"
-              animate="open"
-              exit="closed"
-              className="absolute bottom-0 right-0 w-14 h-14 rounded-full bg-green-500 text-white flex items-center justify-center text-xl"
-              whileHover={{ scale: 1.1, boxShadow: "0 0 15px rgba(74, 222, 128, 0.6)" }}
-              whileTap={{ scale: 0.9 }}
-              title={t('contact.whatsapp')}
-            >
-              <i className="fab fa-whatsapp"></i>
-            </motion.a>
-          )}
-        </AnimatePresence>
-        
-        {/* Email Button */}
-        <AnimatePresence>
-          {isOpen && (
-            <motion.a
-              href={`mailto:${contactInfo.email}`}
-              custom={3}
-              variants={buttonVariants}
-              initial="closed"
-              animate="open"
-              exit="closed"
-              className="absolute bottom-0 right-0 w-14 h-14 rounded-full bg-blue-500 text-white flex items-center justify-center text-xl"
-              whileHover={{ scale: 1.1, boxShadow: "0 0 15px rgba(59, 130, 246, 0.6)" }}
-              whileTap={{ scale: 0.9 }}
-              title={t('contact.email')}
-            >
-              <i className="fas fa-envelope"></i>
-            </motion.a>
-          )}
-        </AnimatePresence>
-        
-        {/* Facebook Button */}
-        <AnimatePresence>
-          {isOpen && (
-            <motion.a
-              href={contactInfo.facebook}
-              target="_blank"
-              rel="noopener noreferrer"
-              custom={4}
-              variants={buttonVariants}
-              initial="closed"
-              animate="open"
-              exit="closed"
-              className="absolute bottom-0 right-0 w-14 h-14 rounded-full bg-blue-600 text-white flex items-center justify-center text-xl"
-              whileHover={{ scale: 1.1, boxShadow: "0 0 15px rgba(37, 99, 235, 0.6)" }}
-              whileTap={{ scale: 0.9 }}
-              title={t('contact.facebook')}
-            >
-              <i className="fab fa-facebook-f"></i>
-            </motion.a>
-          )}
-        </AnimatePresence>
-        
-        {/* Instagram Button */}
-        <AnimatePresence>
-          {isOpen && (
-            <motion.a
-              href={contactInfo.instagram}
-              target="_blank"
-              rel="noopener noreferrer"
-              custom={5}
-              variants={buttonVariants}
-              initial="closed"
-              animate="open"
-              exit="closed"
-              className="absolute bottom-0 right-0 w-14 h-14 rounded-full bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400 text-white flex items-center justify-center text-xl"
-              whileHover={{ scale: 1.1, boxShadow: "0 0 15px rgba(219, 39, 119, 0.6)" }}
-              whileTap={{ scale: 0.9 }}
-              title={t('contact.instagram')}
-            >
-              <i className="fab fa-instagram"></i>
-            </motion.a>
+            <>
+              {socialLinks.map((social, index) => (
+                <motion.div
+                  key={social.name}
+                  className="relative group"
+                  variants={buttonVariants}
+                  initial="closed"
+                  animate="open"
+                  exit="closed"
+                >
+                  <motion.a
+                    href={social.link}
+                    className={`${social.bgColor} cosmic-glow w-12 h-12 rounded-full flex items-center justify-center text-white text-xl transform transition-transform duration-300 hover:scale-110`}
+                    whileHover={{ y: -5 }}
+                    whileTap={{ scale: 0.9 }}
+                    target={social.name !== 'Phone' ? '_blank' : undefined}
+                    rel="noopener noreferrer"
+                    aria-label={social.name}
+                  >
+                    <i className={social.icon}></i>
+                    
+                    {/* Animated cosmic particles around button */}
+                    <div className="absolute inset-0 pointer-events-none">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <div 
+                          key={i}
+                          className="absolute w-1 h-1 bg-white rounded-full animate-particle"
+                          style={{
+                            top: `${Math.random() * 100}%`,
+                            left: `${Math.random() * 100}%`,
+                            animationDelay: `${Math.random() * 2}s`,
+                            opacity: 0.7,
+                          }}
+                        ></div>
+                      ))}
+                    </div>
+                  </motion.a>
+                  
+                  {/* Tooltip */}
+                  <motion.div
+                    className="absolute top-1/2 right-full -translate-y-1/2 mr-3 px-3 py-1 rounded-lg bg-slate-800 text-white text-sm whitespace-nowrap pointer-events-none"
+                    initial="hidden"
+                    whileHover="visible"
+                    animate="hidden"
+                    variants={tooltipVariants}
+                  >
+                    {social.tooltip}
+                    <div className="absolute top-1/2 right-0 -translate-y-1/2 translate-x-full border-8 border-transparent border-l-slate-800"></div>
+                  </motion.div>
+                </motion.div>
+              ))}
+            </>
           )}
         </AnimatePresence>
       </motion.div>
+      
+      <motion.button
+        className="relative w-14 h-14 rounded-full bg-primary text-white flex items-center justify-center text-2xl shadow-lg focus:outline-none cosmic-glow"
+        whileTap={{ scale: 0.9 }}
+        animate={isOpen ? "open" : "closed"}
+        variants={toggleButtonVariants}
+        aria-label={isOpen ? t('social.close') : t('social.open')}
+        onClick={toggleOpen}
+      >
+        <i className={`fas ${isOpen ? 'fa-times' : 'fa-plus'}`}></i>
+        
+        {/* Animated ring around button */}
+        <div className="absolute inset-0 border-4 border-transparent rounded-full animate-ping-slow opacity-30"></div>
+        
+        {/* Cosmic particles around the toggle button */}
+        <div className="absolute inset-0 z-[-1] pointer-events-none">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div 
+              key={i}
+              className="absolute w-1 h-1 bg-white rounded-full"
+              style={{
+                top: `${Math.random() * 100}%`,
+                left: `${Math.random() * 100}%`,
+                transform: `scale(${Math.random() + 0.5})`,
+                opacity: Math.random() * 0.7 + 0.3,
+                animation: `float-particle ${Math.random() * 3 + 2}s linear infinite`,
+                animationDelay: `${Math.random() * 2}s`,
+              }}
+            ></div>
+          ))}
+        </div>
+      </motion.button>
     </div>
   );
 };
