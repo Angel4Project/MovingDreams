@@ -1,0 +1,158 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+    font-family: 'Heebo', sans-serif;
+    scroll-behavior: smooth;
+  }
+
+  /* RTL specific adjustments */
+  html[dir="rtl"] .space-x-reverse {
+    --tw-space-x-reverse: 1;
+  }
+
+  html[dir="rtl"] .mr-2 {
+    margin-left: 0.5rem;
+    margin-right: 0;
+  }
+
+  html[dir="rtl"] .ml-2 {
+    margin-right: 0.5rem;
+    margin-left: 0;
+  }
+
+  html[dir="rtl"] .mr-4 {
+    margin-left: 1rem;
+    margin-right: 0;
+  }
+
+  /* 3D card flip animations */
+  .testimonial-card {
+    transform-style: preserve-3d;
+    transition: transform 0.6s;
+    position: relative;
+  }
+
+  .testimonial-card .testimonial-front,
+  .testimonial-card .testimonial-back {
+    backface-visibility: hidden;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .testimonial-card .testimonial-back {
+    transform: rotateY(180deg);
+  }
+
+  .testimonial-card:hover,
+  .testimonial-card.group-hover:not(.transform) {
+    transform: rotateY(180deg);
+  }
+
+  .backface-hidden {
+    backface-visibility: hidden;
+  }
+
+  .rotate-y-180 {
+    transform: rotateY(180deg);
+  }
+
+  /* Services card animations */
+  .services-card {
+    transition: transform 0.5s, box-shadow 0.5s;
+  }
+
+  .services-card:hover {
+    transform: translateY(-10px) scale(1.02);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  }
+
+  /* Loading animation elements */
+  .star {
+    position: absolute;
+    background-color: white;
+    border-radius: 50%;
+    animation: twinkle 3s infinite;
+  }
+  
+  @keyframes twinkle {
+    0%, 100% {
+      opacity: 0.3;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+  
+  .sun {
+    position: absolute;
+    width: 100px;
+    height: 100px;
+    background: radial-gradient(circle, #fff 0%, #ffff66 20%, #ff6600 60%, #ff0000 80%);
+    border-radius: 50%;
+    box-shadow: 0 0 100px 50px rgba(255, 255, 0, 0.5);
+    transform: scale(0);
+    animation: sunGrow 4s ease-in 2s forwards;
+  }
+  
+  @keyframes sunGrow {
+    0% {
+      transform: scale(0);
+    }
+    100% {
+      transform: scale(10);
+    }
+  }
+
+  /* Float animation for hero elements */
+  @keyframes float {
+    0%, 100% { 
+      transform: translateY(0); 
+    }
+    50% { 
+      transform: translateY(-20px); 
+    }
+  }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  /* High contrast mode for accessibility */
+  .high-contrast {
+    filter: contrast(1.5);
+  }
+
+  /* Dark mode styling */
+  .dark-mode {
+    background-color: #121212;
+    color: #f0f0f0;
+  }
+  
+  .dark-mode .bg-white {
+    background-color: #1e1e1e !important;
+  }
+  
+  .dark-mode .bg-gray-light {
+    background-color: #2d2d2d !important;
+  }
+  
+  .dark-mode .text-gray-800 {
+    color: #e0e0e0 !important;
+  }
+
+  /* Perspective for 3D elements */
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+}
