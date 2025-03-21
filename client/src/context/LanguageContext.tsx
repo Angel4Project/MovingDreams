@@ -10,7 +10,12 @@ interface LanguageContextType {
   dir: string;
 }
 
-const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
+const LanguageContext = createContext<LanguageContextType>({
+  language: 'he',
+  setLanguage: () => {},
+  t: (key) => key,
+  dir: 'rtl'
+});
 
 interface LanguageProviderProps {
   children: ReactNode;
@@ -21,7 +26,9 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) 
   const [language, setLanguageState] = useState<Language>(() => {
     if (typeof window !== 'undefined') {
       const savedLanguage = localStorage.getItem('preferredLanguage');
-      return (savedLanguage as Language) || 'he';
+      if (savedLanguage && (savedLanguage === 'he' || savedLanguage === 'en' || savedLanguage === 'ru' || savedLanguage === 'ar')) {
+        return savedLanguage as Language;
+      }
     }
     return 'he';
   });
@@ -43,39 +50,50 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) 
   };
 
   const translate = (key: string): string => {
-    const keys = key.split('.');
-    let value = translations[language];
+    // Handle empty keys
+    if (!key) return '';
     
-    // Try to get translation from selected language
-    for (const k of keys) {
-      if (value && typeof value === 'object' && k in value) {
-        value = value[k as keyof typeof value];
-      } else {
-        // If translation is missing in the selected language, try Hebrew as fallback
-        if (language !== 'he') {
-          let fallbackValue = translations['he'];
-          let foundInFallback = true;
-          
-          for (const fallbackKey of keys) {
-            if (fallbackValue && typeof fallbackValue === 'object' && fallbackKey in fallbackValue) {
-              fallbackValue = fallbackValue[fallbackKey as keyof typeof fallbackValue];
-            } else {
-              foundInFallback = false;
-              break;
+    try {
+      const keys = key.split('.');
+      // Type annotations to help TypeScript understand the objects
+      const translationData = translations[language] as Record<string, any>;
+      let value: any = translationData;
+      
+      // Try to get translation from selected language
+      for (const k of keys) {
+        if (value && typeof value === 'object' && k in value) {
+          value = value[k];
+        } else {
+          // If translation is missing in the selected language, try Hebrew as fallback
+          if (language !== 'he') {
+            const heTranslations = translations['he'] as Record<string, any>;
+            let fallbackValue: any = heTranslations;
+            let foundInFallback = true;
+            
+            for (const fallbackKey of keys) {
+              if (fallbackValue && typeof fallbackValue === 'object' && fallbackKey in fallbackValue) {
+                fallbackValue = fallbackValue[fallbackKey];
+              } else {
+                foundInFallback = false;
+                break;
+              }
+            }
+            
+            if (foundInFallback && typeof fallbackValue === 'string') {
+              return fallbackValue;
             }
           }
           
-          if (foundInFallback) {
-            return fallbackValue as string;
-          }
+          // If all fails, return the key
+          return key;
         }
-        
-        // If all fails, return the key
-        return key;
       }
+      
+      return typeof value === 'string' ? value : key;
+    } catch (error) {
+      console.error(`Translation error for key: ${key}`, error);
+      return key;
     }
-    
-    return value as string;
   };
 
   // Setup language effects when language changes
@@ -92,7 +110,7 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) 
       // Update meta tags
       const metaDescription = document.querySelector('meta[name="description"]');
       if (metaDescription) {
-        const descriptions = {
+        const descriptions: Record<Language, string> = {
           he: 'אור להובלות - חברת הובלות מקצועית ואמינה המספקת שירותי הובלה באיכות גבוהה',
           en: 'Or Lehovalot - Professional and reliable moving company providing high-quality moving services',
           ru: 'Ор Леовалот - Профессиональная и надежная транспортная компания, предоставляющая высококачественные услуги по переезду',
@@ -117,15 +135,6 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) 
   );
 };
 
-// This is intentionally kept separate from the context export itself to avoid circular imports
-function useLanguageInternal(): LanguageContextType {
-  const context = useContext(LanguageContext);
-  
-  if (context === undefined) {
-    throw new Error('useLanguage must be used within a LanguageProvider');
-  }
-  
-  return context;
+export function useLanguage(): LanguageContextType {
+  return useContext(LanguageContext);
 }
-
-export { useLanguageInternal as useLanguage };
