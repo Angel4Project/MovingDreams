@@ -7,17 +7,17 @@
     "start": "next start"
   },
   "dependencies": {
-    "next": "latest",
-    "react": "latest",
-    "react-dom": "latest",
     "@react-three/drei": "latest",
     "@react-three/fiber": "latest",
     "emailjs-com": "latest",
-    "gsap": "latest"
+    "gsap": "latest",
+    "next": "^15.2.3",
+    "react": "latest",
+    "react-dom": "latest"
   },
   "devDependencies": {
-    "tailwindcss": "latest",
+    "autoprefixer": "latest",
     "postcss": "latest",
-    "autoprefixer": "latest"
+    "tailwindcss": "latest"
   }
 }
