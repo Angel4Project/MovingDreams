@@ -4,6 +4,7 @@ import NotFound from "@/pages/not-found";
 import Home from "@/pages/Home";
 import { useEffect, useState } from "react";
 import CosmicLoader from "@/components/CosmicLoader";
+import { LanguageProvider } from "./context/LanguageContext";
 
 function Router() {
   return (
@@ -26,15 +27,18 @@ function App() {
     return () => clearTimeout(timer);
   }, []);
 
+  // Create simpler app structure with loading state
   return (
     <>
       {loading ? (
+        // Don't use language context in loader to prevent circular dependency
         <CosmicLoader />
       ) : (
-        <>
+        // Wrap main app content in language provider
+        <LanguageProvider>
           <Router />
           <Toaster />
-        </>
+        </LanguageProvider>
       )}
     </>
   );
